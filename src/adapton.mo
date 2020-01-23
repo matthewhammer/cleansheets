@@ -1,9 +1,11 @@
 import T "types.mo";
+import H "mo:stdlib/hashMap.mo";
+import L "mo:stdlib/list.mo";
 
 module {
 public type Val = T.Val;
 public type Exp = T.Exp;
-public type Err = T.Err;
+public type Error = T.Error;
 public type NodeId = T.NodeId;
 public type Name = T.Name;
 public type Closure = T.Closure;
@@ -36,6 +38,11 @@ public type Action = {
 public type Node = {
   #ref:Ref;
   #thunk:Thunk;
+};
+
+public type Context = {
+  #store: H.HashMap<Name, Node>;
+  #stack: L.List<Node>;
 };
 
 };

@@ -5,6 +5,7 @@ import List "mo:stdlib/list.mo";
 module {
 
 public type Val = {
+  #name: Name;
   #text: Text;
   #nat: Nat;
   #int: Int;
@@ -30,9 +31,9 @@ type List<X> = List.List<X>;
 
 public type Env = List<(Name, Val)>;
 
-public type Err = {
-  origin: Buf.Buf<Text>;
-  message: Buf.Buf<Text>;
+public type Error = {
+  origin: List<Text>;
+  message: Text;
 };
 
 public type Binop = {
@@ -45,7 +46,7 @@ public type Binop = {
 
 public type Exp = {
   #name: Name;
-  #error: Err;
+  #error: Error;
   #varocc: Name;
   #text: Text;
   #nat: Nat;
@@ -56,7 +57,7 @@ public type Exp = {
   #binOp: (Binop, Exp, Exp);
   #put: (Exp, Exp);
   #get: Exp;
-  #thunk: Closure;
+  #thunk: (Exp, Closure);
 };
 
 public type Block =
