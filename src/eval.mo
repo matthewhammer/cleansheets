@@ -19,12 +19,14 @@ module {
   public func varNotFound(env:Env, varocc:Name) : Error {
     { origin=?("eval", null);
       message=("Variable not found: " # "to do");
+      data=#varNotFound(env, varocc)
     }
   };
 
   public func missingFeature(feat:Text) : Error {
     { origin=?("eval", null);
       message=("Missing feature: " # feat);
+      data=#missingFeature(feat)
     }
   };
   
@@ -64,7 +66,7 @@ module {
       case (#put(e1, e2)) {
             #err(missingFeature("put expressions"))
         };
-      case (#thunk(e, closure)) {
+      case (#putThunk(e, closure)) {
              #err(missingFeature("thunk expressions"))
            };
 

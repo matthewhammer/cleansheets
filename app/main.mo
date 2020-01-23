@@ -1,5 +1,4 @@
 import Prelude "mo:stdlib/prelude.mo";
-import Adapton "../src/adapton.mo";
 import Eval "../src/eval.mo";
 
 type State = {#empty; #init:Text};
