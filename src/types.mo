@@ -125,17 +125,18 @@ public module Adapton {
 
 public type Store = H.HashMap<Name, Node>;
 public type Stack = L.List<(Name, Node)>;
+public type EdgeBuf = Buf.Buf<Edge>;
 
 public type Ref = {
   content: Val;
-  incoming: [Edge]
+  incoming: EdgeBuf;
 };
 
 public type Thunk = {
   closure: Closure;
   result: ?Result;
   outgoing: [Edge];
-  incoming: [Edge];
+  incoming: EdgeBuf;
 };
 
 public type Edge = {

@@ -35,9 +35,9 @@ public type Edge = T.Adapton.Edge;
 public type Action = T.Adapton.Action;
 
 public func init() : Context {
-  let st : Store = H.HashMap<Name, Node>(100, T.nameEq, T.nameHash);
+  let st : Store = H.HashMap<Name, Node>(03, T.nameEq, T.nameHash);
   let sk : Stack = null;
-  let es = Buf.Buf<Edge>(100);
+  let es = Buf.Buf<Edge>(03);
   let ag : {#editor; #archivist} = #editor;
   { var store = st;
     var stack = sk;
@@ -55,6 +55,32 @@ func newEdge(source:NodeId, target:NodeId, action:Action) : Edge {
 };
 
 func addBackEdge(c:Context, edge:Edge) {
+  func incomingEdgeBuf(n:Node) : T.Adapton.EdgeBuf {
+    switch n {
+    case (#ref(n)) { n.incoming };
+    case (#thunk(t)) { t.incoming };
+    }
+  };
+  switch (c.store.get(edge.dependency.name)) {
+    case null { P.unreachable() };
+    case (?targetNode) {
+           let edgeBuf = incomingEdgeBuf(targetNode);
+           for (existing in edgeBuf.iter()) {
+             // same edge means same source and action tag; return early.
+             if (T.nameEq(edge.dependent.name,
+                          existing.dependent.name)) {
+               switch (edge.checkpoint, existing.checkpoint) {
+                 case (#get(_), #get(_)) { return () };
+                 case (#put(_), #put(_)) { return () };
+                 case (#putThunk(_), #putThunk(_)) { return () };
+                 case (_, _) { };
+               };
+             }
+           };
+           // not found, so add it:
+           edgeBuf.add(edge);
+         }
+  }
   // to do -- update edge's dependency's list of dependents to include this edge, if it doesn't already
 };
 
@@ -92,9 +118,11 @@ func addEdge(c:Context, target:NodeId, action:Action) {
   };
 };
 
+public func newEdgeBuf() : T.Adapton.EdgeBuf { Buf.Buf<Edge>(03) };
+
 public func putThunk(c:Context, n:Name, cl:Closure) : R.Result<NodeId, T.PutError> {
   let newThunkNode : Thunk = {
-    incoming=[];
+    incoming=newEdgeBuf();
     outgoing=[];
     result=null;
     closure=cl;
@@ -118,7 +146,7 @@ public func putThunk(c:Context, n:Name, cl:Closure) : R.Result<NodeId, T.PutErro
 
 public func put(c:Context, n:Name, val:Val) : R.Result<NodeId, T.PutError> {
   let newRefNode : Ref = {
-    incoming=[];
+    incoming=newEdgeBuf();
     content=val;
   };
   switch (c.store.set(n, #ref(newRefNode))) {
@@ -146,14 +174,14 @@ func thunkIsDirty(t:Thunk) : Bool {
 };
 
 func dirtyThunk(c:Context, thunkNode:Thunk) {
-  for (i in thunkNode.incoming.keys()) {
-    dirtyEdge(c, thunkNode.incoming[i])
+  for (edge in thunkNode.incoming.iter()) {
+    dirtyEdge(c, edge)
   }
 };
 
 func dirtyRef(c:Context, refNode:Ref) {
-  for (i in refNode.incoming.keys()) {
-    dirtyEdge(c, refNode.incoming[i])
+  for (edge in refNode.incoming.iter()) {
+    dirtyEdge(c, edge)
   }
 };
 
@@ -232,7 +260,7 @@ func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
   let oldStack = c.stack;
   let oldAgent = c.agent;
   c.agent := #archivist;
-  c.edges := Buf.Buf<Edge>(100);
+  c.edges := Buf.Buf<Edge>(03);
   c.stack := ?((nodeName, #thunk(thunkNode)), oldStack);
   remBackEdges(c, thunkNode.outgoing);
   let res = thunkNode.closure.eval(c);
@@ -244,7 +272,7 @@ func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
     closure=thunkNode.closure;
     result=?res;
     outgoing=edges;
-    incoming=[];
+    incoming=newEdgeBuf();
   };
   ignore c.store.set(nodeName, #thunk(newNode));
   addBackEdges(c, newNode.outgoing);

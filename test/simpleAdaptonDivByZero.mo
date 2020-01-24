@@ -64,7 +64,7 @@ actor SimpleAdaptonDivByZero {
 
     // re-demand division:
     let res2 = assertOkGet(A.get(ctx, cell3));
-    switch res1 {
+    switch res2 {
       case (#ok(#nat(0))) { };
       case _ { assert false };
     };
@@ -74,12 +74,12 @@ actor SimpleAdaptonDivByZero {
 
     // re-demand division:
     let res3 = assertOkGet(A.get(ctx, cell3));
-    switch res1 {
-      case (#ok(#nat(42))) { };
+    switch res3 {
+      case (#ok(#nat(21))) { };
       case _ { assert false };
     };
 
   };
 };
 
-//SimpleAdaptonDivByZero.go();
+SimpleAdaptonDivByZero.go();
