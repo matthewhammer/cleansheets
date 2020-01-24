@@ -138,13 +138,17 @@ func dirtyRef(c:Context, refNode:Ref) {
 };
 
 func dirtyEdge(c:Context, edge:Edge) {
-  edge.dirtyFlag := true;
-  switch (c.store.get(edge.dependent.name)) {
+  if (edge.dirtyFlag) {
+    // graph invariants ==> nothing to do.
+  } else {
+    edge.dirtyFlag := true;
+    switch (c.store.get(edge.dependent.name)) {
     case null { P.unreachable() };
     case (?#ref(_)) { P.unreachable() };
     case (?#thunk(thunkNode)) {
            dirtyThunk(c, thunkNode)
          };
+    }
   }
 };
 
