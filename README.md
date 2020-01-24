@@ -2,7 +2,7 @@
 CleanSheets
 ===============================================
 
-A [spreadsheet application](https://en.wikipedia.org/wiki/Spreadsheet) for the [Internet Computer](https://dfinity.org/).
+A [spreadsheet application](https://en.wikipedia.org/wiki/Spreadsheet) for the [Internet Computer](https://dfinity.org/faq/what-is-the-internet-computer), written in [Motoko](https://dfinity.org/faq/what-is-motoko).
 
 #### Current status: _Very early days.  Nearterm features still very incomplete._
 
