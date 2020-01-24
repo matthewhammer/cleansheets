@@ -54,6 +54,26 @@ func newEdge(source:NodeId, target:NodeId, action:Action) : Edge {
   }
 };
 
+func addBackEdge(c:Context, edge:Edge) {
+  // to do -- update edge's dependency's list of dependents to include this edge, if it doesn't already
+};
+
+func remBackEdge(c:Context, edge:Edge) {
+  // to do -- update this edge's dependency's list of dependents to _not_ include this edge
+};
+
+func addBackEdges(c:Context, edges:[Edge]) {
+  for (i in edges.keys()) {
+    addBackEdge(c, edges[i])
+  }
+};
+
+func remBackEdges(c:Context, edges:[Edge]) {
+  for (i in edges.keys()) {
+    remBackEdge(c, edges[i])
+  }
+};
+
 func addEdge(c:Context, target:NodeId, action:Action) {
   let edge = switch (c.agent) {
   case (#archivist) {
@@ -210,10 +230,14 @@ func cleanThunk(c:Context, t:Thunk) : Bool {
 func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
   let oldEdges = c.edges;
   let oldStack = c.stack;
+  let oldAgent = c.agent;
+  c.agent := #archivist;
   c.edges := Buf.Buf<Edge>(0);
   c.stack := ?((nodeName, #thunk(thunkNode)), oldStack);
+  remBackEdges(c, thunkNode.outgoing);
   let res = thunkNode.closure.eval(c);
   let edges = c.edges.toArray();
+  c.agent := oldAgent;
   c.edges := oldEdges;
   c.stack := oldStack;
   let newNode = {
@@ -223,6 +247,7 @@ func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
     incoming=[];
   };
   ignore c.store.set(nodeName, #thunk(newNode));
+  addBackEdges(c, newNode.outgoing);
   res
 };
 
