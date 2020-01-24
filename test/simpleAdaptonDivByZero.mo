@@ -34,8 +34,12 @@ actor SimpleAdaptonDivByZero {
     // "cell 2 holds 2":
     let cell2 : A.NodeId = assertOkPut(A.put(ctx, #nat(2), #nat(2)));
 
-    // "cell 3 holds [[  if cell2 == 0 then 0
-    //                   else cell1 / cell2    ]], still unevaluated":
+    // "cell 3 holds a suspended closure for this expression:
+    //
+    //   if (get(cell2) == 0) { 0 }
+    //   else { get(cell1) / get(cell2) }
+    //
+    // ...and it is still unevaluated".
     //
     let cell3 : A.NodeId = assertOkPut(
       A.putThunk(ctx, #nat(3),
