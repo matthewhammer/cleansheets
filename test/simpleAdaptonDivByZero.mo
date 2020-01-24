@@ -41,13 +41,13 @@ actor SimpleAdaptonDivByZero {
       A.putThunk(ctx, #nat(3),
                  E.closure(
                    null,
-                   #ifCond(#binOp(#eq,
-                                  #get(#ref(cell2)),
-                                  #nat(0)),
+                   #ifCond(#strictBinOp(#eq,
+                                        #get(#ref(cell2)),
+                                        #nat(0)),
                            #nat(0),
-                           #binOp(#div,
-                                  #get(#ref(cell1)),
-                                  #get(#ref(cell2))
+                           #strictBinOp(#div,
+                                        #get(#ref(cell1)),
+                                        #get(#ref(cell2))
                            ))
                  ))
     );
@@ -80,4 +80,6 @@ actor SimpleAdaptonDivByZero {
     };
 
   };
-}
+};
+
+SimpleAdaptonDivByZero.go();

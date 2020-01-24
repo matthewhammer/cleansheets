@@ -35,9 +35,9 @@ public type Edge = T.Adapton.Edge;
 public type Action = T.Adapton.Action;
 
 public func init() : Context {
-  let st : Store = H.HashMap<Name, Node>(0, T.nameEq, T.nameHash);
+  let st : Store = H.HashMap<Name, Node>(100, T.nameEq, T.nameHash);
   let sk : Stack = null;
-  let es = Buf.Buf<Edge>(0);
+  let es = Buf.Buf<Edge>(100);
   let ag : {#editor; #archivist} = #editor;
   { var store = st;
     var stack = sk;
@@ -232,7 +232,7 @@ func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
   let oldStack = c.stack;
   let oldAgent = c.agent;
   c.agent := #archivist;
-  c.edges := Buf.Buf<Edge>(0);
+  c.edges := Buf.Buf<Edge>(100);
   c.stack := ?((nodeName, #thunk(thunkNode)), oldStack);
   remBackEdges(c, thunkNode.outgoing);
   let res = thunkNode.closure.eval(c);

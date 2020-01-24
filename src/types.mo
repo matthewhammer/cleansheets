@@ -77,13 +77,14 @@ public type Error = {
 
 public type Result = Result.Result<Val, Error>;
 
-public type Binop = {
+// strict means left and right sides _always_ evaluated to values
+public type StrictBinOp = {
+  #eq;
+  #div;
   #add;
   #sub;
-  #div;
   #mul;
   #cat;
-  #eq;
 };
 
 public type Exp = {
@@ -101,7 +102,7 @@ public type Exp = {
   #grid: [[Exp]];
   #block: Block;
   #ifCond: (Exp, Exp, Exp);
-  #binOp: (Binop, Exp, Exp);
+  #strictBinOp: (StrictBinOp, Exp, Exp);
   #put: (Exp, Exp);
   #putThunk: (Exp, Closure);
   #get: Exp;
@@ -168,28 +169,15 @@ public type Context = {
 // ---------------------- all function definitions below ------------------
 
 public func nameHash(n:Name) : HashVal {
-  // to do
+  // to do -- fix hash collisions introduced here:
   0
 };
 
-// to do: move to stdlib:
-public func natComp(n1:Nat, n2:Nat) : OrdComp {
-  if (n1 == n2) { #equalTo }
-  else if (n1 < n2) { #lessThan }
-  else { #greaterThan }
-};
-
-// to do: move to stdlib:
-public func textComp(t1:Text, t2:Text) : OrdComp {
-  P.nyi()
-};
-
-public func valComp(v1:Val, v2:Val) : OrdComp {
-  P.nyi()
-};
-
 public func valEq(v1:Val, v2:Val) : Bool {
-  P.nyi()
+  switch (v1, v2) {
+  case (#nat(n1), #nat(n2)) { n1 == n2 };
+  case (_, _) { P.nyi() };
+  }
 };
 
 public func closureEq(c1:Closure, c2:Closure) : Bool {
@@ -207,6 +195,44 @@ public func resultEq(r1:Result, r2:Result) : Bool {
     case (#err(e1), #err(e2)) { errorEq(e1.data, e2.data) };
     case (_, _) { false };
   }
+};
+
+public func nameEq(n1:Name, n2:Name) : Bool {
+  switch (n1, n2) {
+  case (#nat(n1), #nat(n2)) { n1 == n2 };
+  case (#text(t1), #text(t2)) { t1 == t2 };
+  case (#tagTup(tag1, tup1), #tagTup(tag2, tup2)) {
+         if (nameEq(tag1, tag2)) {
+           if (tup1.len() == tup2.len()) {
+             for (i in tup1.keys()) {
+               if(nameEq(tup1[i], tup2[i])) {
+                 // continue checking...
+               } else { return false }
+             }; true
+           } else { false };
+         } else { false };
+       };
+  case (_, _) { false };
+  }
+};
+
+// delete this?
+module Comp {
+
+public func valComp(v1:Val, v2:Val) : OrdComp {
+  P.nyi()
+};
+
+// to do: move to stdlib:
+public func natComp(n1:Nat, n2:Nat) : OrdComp {
+  if (n1 == n2) { #equalTo }
+  else if (n1 < n2) { #lessThan }
+  else { #greaterThan }
+};
+
+// to do: move to stdlib:
+public func textComp(t1:Text, t2:Text) : OrdComp {
+  P.nyi()
 };
 
 public func nameComp(n1:Name, n2:Name) : OrdComp {
@@ -239,11 +265,6 @@ public func nameComp(n1:Name, n2:Name) : OrdComp {
   }
 };
 
-public func nameEq(n1:Name, n2:Name) : Bool {
-  switch (nameComp(n1, n2)) {
-    case (#equalTo) { true };
-    case _ { false };
-  }
 };
 
 }

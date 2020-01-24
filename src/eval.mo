@@ -42,15 +42,19 @@ module {
                   };
              }
            };
-      case (#binOp(#eq, e1, e2)) {
+      case (#strictBinOp(binop, e1, e2)) {
              switch (evalExp(actx, env, e1)) {
              case (#err(e)) { #err(e) };
              case (#ok(v1)) {
                     switch (evalExp(actx, env, e2)) {
                     case (#err(e)) { #err(e) };
                     case (#ok(v2)) {
-                           evalEq(v1, v2)
-                         }
+                           switch (binop) {
+                           case (#eq)  { evalEq(v1, v2) };
+                           case (#div) { evalDiv(v1, v2) };
+                           case _    { #err(missingFeature("binop: to do")) }
+                           }
+                         };
                     }
                   }
              }
@@ -60,7 +64,7 @@ module {
                case (#err(e)) { #err(e) };
                case (#ok(#bool(b))) {
                       if b { evalExp(actx, env, e2) }
-                      else { evalExp(actx, env, e2) }
+                      else { evalExp(actx, env, e3) }
                     };
                case (#ok(v)) { #err(valueMismatch(v, #bool)) };
              }
@@ -78,9 +82,6 @@ module {
           #grid(Array.map(rows, evalRow)) */
             #err(missingFeature("grid expressions"))
         };
-      case (#binOp(b, e1, e2)) {
-             #err(missingFeature("binop expressions"))
-           };
       case (#put(e1, e2)) {
             #err(missingFeature("put expressions"))
         };
@@ -165,6 +166,15 @@ module {
       case (#nat(n1), #nat(n2)) { #ok(#bool(n1 == n2)) };
       case (_, _) {
              #err(missingFeature("boolean eq test; missing case."))
+           }
+    }
+  };
+
+  public func evalDiv(v1:Val, v2:Val) : Res {
+    switch (v1, v2) {
+      case (#nat(n1), #nat(n2)) { #ok(#nat(n1 / n2)) };
+      case (_, _) {
+             #err(missingFeature("division; missing case."))
            }
     }
   };
