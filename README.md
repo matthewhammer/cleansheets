@@ -20,7 +20,7 @@ Long-term, aspirational milestones
 Build status
 -------------
 
-![travis-status](https://travis-ci.org/matthewhammer/cleansheets.svg?branch=master)
+[![travis-status](https://travis-ci.org/matthewhammer/cleansheets.svg?branch=master)](https://travis-ci.org/matthewhammer/cleansheets.svg?branch=master)
 
 
 
