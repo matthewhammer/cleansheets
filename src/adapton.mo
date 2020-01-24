@@ -47,8 +47,9 @@ public func init() : Context {
 func newEdge(source:NodeId, target:NodeId, action:Action) : Edge {
   { dependent=source;
     dependency=target;
-    dirtyFlag=false;
-    checkpoint=action }
+    checkpoint=action;
+    var dirtyFlag=false;
+  }
 };
 
 func addEdge(c:Context, target:NodeId, action:Action) {
@@ -76,21 +77,40 @@ public func putThunk(c:Context, n:Name, cl:Closure) : R.Result<NodeId, T.PutErro
     result=null;
     closure=cl;
   };
-  let _oldNode = c.store.set(n, #thunk(newThunkNode));
-  // to do: if the node exists,
-  //   then we have to do more tests, and possibly dirty its dependents
+  switch (c.store.set(n, #thunk(newThunkNode))) {
+  case null { /* no prior node of this name */ };
+  case (?#thunk(oldThunk)) {
+         if (T.closureEq(oldThunk.closure, cl)) {
+           // matching closures ==> no dirtying.
+         } else {
+           // to do: if the node exists and the name is currently on the stack,
+           //   then the thunk-stack is cyclic; signal an error.
+           dirtyThunk(c, oldThunk)
+         }
+       };
+  case (?#ref(oldRef)) { dirtyRef(c, oldRef) };
+  };
+  addEdge(c, {name=n}, #putThunk(cl));
   #ok({ name=n })
 };
 
 public func put(c:Context, n:Name, val:Val) : R.Result<NodeId, T.PutError> {
-  // to do: record edge in the context
   let newRefNode : Ref = {
     incoming=[];
     content=val;
   };
-  let _oldNode = c.store.set(n, #ref(newRefNode));
-  // to do: if the node exists,
-  //   then we have to do more tests, and possibly dirty its dependents
+  switch (c.store.set(n, #ref(newRefNode))) {
+  case null { /* no prior node of this name */ };
+  case (?#thunk(oldThunk)) { dirtyThunk(c, oldThunk) };
+  case (?#ref(oldRef)) {
+         if (T.valEq(oldRef.content, val)) {
+           // matching values ==> no dirtying.
+         } else {
+           dirtyRef(c, oldRef)
+         }
+       };
+  };
+  addEdge(c, {name=n}, #put(val));
   #ok({ name=n })
 };
 
@@ -101,6 +121,103 @@ func thunkIsDirty(t:Thunk) : Bool {
     };
   };
   false
+};
+
+func dirtyThunk(c:Context, thunkNode:Thunk) {
+  for (i in thunkNode.incoming.keys()) {
+    dirtyEdge(c, thunkNode.incoming[i])
+  }
+};
+
+func dirtyRef(c:Context, refNode:Ref) {
+  for (i in refNode.incoming.keys()) {
+    dirtyEdge(c, refNode.incoming[i])
+  }
+};
+
+func dirtyEdge(c:Context, edge:Edge) {
+  edge.dirtyFlag := true;
+  switch (c.store.get(edge.dependent.name)) {
+    case null { P.unreachable() };
+    case (?#ref(_)) { P.unreachable() };
+    case (?#thunk(thunkNode)) {
+           dirtyThunk(c, thunkNode)
+         };
+  }
+};
+
+func cleanEdge(c:Context, e:Edge) : Bool {
+  if (e.dirtyFlag) {
+    switch (e.checkpoint, c.store.get(e.dependency.name)) {
+    case (#get(oldRes), ?#ref(refNode)) {
+           if (T.resultEq(oldRes, #ok(refNode.content))) {
+             e.dirtyFlag := false;
+             true
+           } else { false }
+         };
+    case (#put(oldVal), ?#ref(refNode)) {
+           if (T.valEq(oldVal, refNode.content)) {
+             e.dirtyFlag := false;
+             true
+           } else { false }
+         };
+    case (#putThunk(oldClos), ?#thunk(thunkNode)) {
+           if (T.closureEq(oldClos, thunkNode.closure)) {
+             e.dirtyFlag := false;
+             true
+           } else { false }
+         };
+    case (#get(oldRes), ?#thunk(thunkNode)) {
+           let oldRes = switch (thunkNode.result) {
+             case (?res) { res };
+             case null { P.unreachable() };
+           };
+           // dirty flag true ==> we must re-evaluate thunk:
+           let newRes = evalThunk(c, e.dependency.name, thunkNode);
+           if (T.resultEq(oldRes, newRes)) {
+             e.dirtyFlag := false;
+             true // equal results ==> clean.
+           } else {
+             false // changed result ==> thunk could not be cleaned.
+           }
+         };
+    case (_, _) {
+           P.unreachable()
+         };
+    }
+  } else {
+    true // already clean
+  }
+};
+
+func thunkCleaningHelper(c:Context, t:Thunk) : Bool {
+  for (i in t.outgoing.keys()) {
+    if (cleanEdge(c, t.outgoing[i])) {
+      /* continue */
+    } else {
+      return false // outgoing[i] could not be cleaned.
+    }
+  };
+  true
+};
+
+func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
+  let oldEdges = c.edges;
+  let oldStack = c.stack;
+  c.edges := Buf.Buf<Edge>(0);
+  c.stack := ?((nodeName, #thunk(thunkNode)), oldStack);
+  let res = thunkNode.closure.eval(c);
+  let edges = c.edges.toArray();
+  c.edges := oldEdges;
+  c.stack := oldStack;
+  let newNode = {
+    closure=thunkNode.closure;
+    result=?res;
+    outgoing=edges;
+    incoming=[];
+  };
+  ignore c.store.set(nodeName, #thunk(newNode));
+  res
 };
 
 public func get(c:Context, n:NodeId) : R.Result<Result, T.GetError> {
@@ -116,33 +233,20 @@ public func get(c:Context, n:NodeId) : R.Result<Result, T.GetError> {
            switch (thunkNode.result) {
              case null {
                     assert (thunkNode.incoming.len() == 0);
-                    let parentEdges = c.edges;
-                    c.edges := Buf.Buf<Edge>(0);
-                    c.stack := ?((n.name, #thunk(thunkNode)), c.stack);
-                    let res = thunkNode.closure.eval(c);
-                    let edges = c.edges.toArray();
-                    c.edges := parentEdges;
-                    let newNode = {
-                      closure=thunkNode.closure;
-                      result=?res;
-                      outgoing=edges;
-                      incoming=[];
-                    };
-                    ignore c.store.set(n.name, #thunk(newNode));
+                    let res = evalThunk(c, n.name, thunkNode);
                     addEdge(c, n, #get(res));
                     #ok(res)
                   };
              case (?oldResult) {
                     if (thunkIsDirty(thunkNode)) {
-                      // to do:
-                      // - first attempt to "clean" the thunk's edges, one by one.
-                      // - if that fails at any point, then re-evaluate it.
-                      // - if it succeeds, then the edges are clean and
-                      //   that implies that the result is consistent (the key idea).
-                      P.nyi()
+                      if(thunkCleaningHelper(c, thunkNode)) {
+                        #ok(oldResult)
+                      } else {
+                        let res = evalThunk(c, n.name, thunkNode);
+                        addEdge(c, n, #get(res));
+                        #ok(res)
+                      }
                     } else {
-                      // ** key idea:
-                      // global graph invariants imply consistency here:
                       #ok(oldResult)
                     }
                   };

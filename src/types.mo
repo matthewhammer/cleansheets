@@ -117,12 +117,12 @@ public type Edge = {
   dependent: NodeId;
   dependency: NodeId;
   checkpoint: Action;
-  dirtyFlag: Bool
+  var dirtyFlag: Bool
 };
 
 public type Action = {
   #put:Val;
-  #thunk:Closure;
+  #putThunk:Closure;
   #get:Result;
 };
 
@@ -165,6 +165,10 @@ public func valComp(v1:Val, v2:Val) : OrdComp {
 };
 
 public func valEq(v1:Val, v2:Val) : Bool {
+  P.nyi()
+};
+
+public func closureEq(c1:Closure, c2:Closure) : Bool {
   P.nyi()
 };
 
