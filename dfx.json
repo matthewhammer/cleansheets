@@ -1,6 +1,9 @@
 {
     "canisters": {
-        "cleansheets": {
+        "cleanSheets": {
+            "main": "src/cleanSheets.mo"
+        },
+        "divByZero": {
             "main": "test/simpleAdaptonDivByZero.mo"
         }
     },
