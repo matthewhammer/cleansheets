@@ -30,19 +30,46 @@ public type Node = T.Adapton.Node;
 public type Store = T.Adapton.Store;
 public type Stack = T.Adapton.Stack;
 public type Edge = T.Adapton.Edge;
+public type Action = T.Adapton.Action;
 
 public func init() : Context {
   let st : Store = H.HashMap<Name, Node>(0, T.nameEq, T.nameHash);
+  let sk : Stack = null;
   let es = Buf.Buf<Edge>(0);
-  { store = st;
-    stack = null;
-    edges = es;
-    agent = #editor;
+  let ag : {#editor; #archivist} = #editor;
+  { var store = st;
+    var stack = sk;
+    var edges = es;
+    var agent = ag;
   }
 };
 
+func newEdge(source:NodeId, target:NodeId, action:Action) : Edge {
+  { dependent=source;
+    dependency=target;
+    dirtyFlag=false;
+    checkpoint=action }
+};
+
+func addEdge(c:Context, target:NodeId, action:Action) {
+  let edge = switch (c.agent) {
+  case (#archivist) {
+         switch (c.stack) {
+         case null { P.unreachable() };
+         case (?((source, _), _)) {
+                let edge = newEdge({name=source}, target, action);
+                c.edges.add(edge)
+              };
+         }
+       };
+  case (#editor) {
+         // no need to do anything;
+         // the editor role is not recorded or memoized
+       };
+  };
+};
+
 public func putThunk(c:Context, n:Name, cl:Closure) : R.Result<NodeId, T.PutError> {
-  // to do: record edge in the context
   let newThunkNode : Thunk = {
     incoming=[];
     outgoing=[];
@@ -77,19 +104,24 @@ func thunkIsDirty(t:Thunk) : Bool {
 };
 
 public func get(c:Context, n:NodeId) : R.Result<Result, T.GetError> {
-  // to do: record edge in the context
   switch (c.store.get(n.name)) {
-    case null { #err(()) /* to do -- better error */ };
+    case null { #err(()) /* error: dangling/forged name posing as live node id. */ };
     case (?#ref(refNode)) {
-           #ok(#ok(refNode.content))
+           let val = refNode.content;
+           let res = #ok(val);
+           addEdge(c, n, #get(res));
+           #ok(res)
          };
     case (?#thunk(thunkNode)) {
            switch (thunkNode.result) {
              case null {
                     assert (thunkNode.incoming.len() == 0);
+                    let parentEdges = c.edges;
+                    c.edges := Buf.Buf<Edge>(0);
+                    c.stack := ?((n.name, #thunk(thunkNode)), c.stack);
                     let res = thunkNode.closure.eval(c);
                     let edges = c.edges.toArray();
-                    c.edges.clear();
+                    c.edges := parentEdges;
                     let newNode = {
                       closure=thunkNode.closure;
                       result=?res;
@@ -97,6 +129,7 @@ public func get(c:Context, n:NodeId) : R.Result<Result, T.GetError> {
                       incoming=[];
                     };
                     ignore c.store.set(n.name, #thunk(newNode));
+                    addEdge(c, n, #get(res));
                     #ok(res)
                   };
              case (?oldResult) {
@@ -112,9 +145,9 @@ public func get(c:Context, n:NodeId) : R.Result<Result, T.GetError> {
                       // global graph invariants imply consistency here:
                       #ok(oldResult)
                     }
-                  }
+                  };
            }
-         }
+         };
   }
 };
 

@@ -123,7 +123,7 @@ public type Edge = {
 public type Action = {
   #put:Val;
   #thunk:Closure;
-  #get:Val;
+  #get:Result;
 };
 
 public type Node = {
@@ -132,10 +132,10 @@ public type Node = {
 };
 
 public type Context = {
-  agent: {#editor; #archivist};
-  edges: Buf.Buf<Edge>;
-  store: Store;
-  stack: Stack;
+  var agent: {#editor; #archivist};
+  var edges: Buf.Buf<Edge>;
+  var stack: Stack;
+  var store: Store;
 };
 
 };
