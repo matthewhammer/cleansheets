@@ -190,7 +190,7 @@ func cleanEdge(c:Context, e:Edge) : Bool {
   }
 };
 
-func thunkCleaningHelper(c:Context, t:Thunk) : Bool {
+func cleanThunk(c:Context, t:Thunk) : Bool {
   for (i in t.outgoing.keys()) {
     if (cleanEdge(c, t.outgoing[i])) {
       /* continue */
@@ -239,7 +239,8 @@ public func get(c:Context, n:NodeId) : R.Result<Result, T.GetError> {
                   };
              case (?oldResult) {
                     if (thunkIsDirty(thunkNode)) {
-                      if(thunkCleaningHelper(c, thunkNode)) {
+                      if(cleanThunk(c, thunkNode)) {
+                        addEdge(c, n, #get(oldResult));
                         #ok(oldResult)
                       } else {
                         let res = evalThunk(c, n.name, thunkNode);
@@ -247,6 +248,7 @@ public func get(c:Context, n:NodeId) : R.Result<Result, T.GetError> {
                         #ok(res)
                       }
                     } else {
+                      addEdge(c, n, #get(oldResult));
                       #ok(oldResult)
                     }
                   };
