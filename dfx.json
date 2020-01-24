@@ -1,7 +1,7 @@
 {
     "canisters": {
         "cleansheets": {
-            "main": "app/main.mo"
+            "main": "test/simpleAdaptonDivByZero.mo"
         }
     },
     "defaults": {

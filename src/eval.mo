@@ -30,6 +30,14 @@ module {
     }
   };
   
+  public func closure(_env:Env, _exp:Exp) : T.Closure {
+    {
+      env=_env;
+      exp=_exp;
+      eval=func (ac:A.Context) : Res { evalExp(ac, env, exp) };
+    }
+  };
+
   public func evalExp(actx: A.Context, env:Env, exp:Exp) : Res {
     func eval(e:Exp) : Res = evalExp(actx, env, e);
     switch exp {
@@ -40,6 +48,8 @@ module {
           case (?v) { #ok(v) };
         }
       };
+      case (#ref(r))  { #ok(#ref(r)) };
+      case (#thunk(t)){ #ok(#thunk(t)) };
       case (#name(n)) { #ok(#name(n)) };
       case (#text(t)) { #ok(#text(t)) };
       case (#int(i))  { #ok(#int(i)) };

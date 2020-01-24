@@ -18,6 +18,8 @@ module {
 public type Val = T.Val;
 public type Exp = T.Exp;
 public type Error = T.Error;
+public type PutError = T.PutError;
+public type GetError = T.GetError;
 public type NodeId = T.NodeId;
 public type Name = T.Name;
 public type Closure = T.Closure;

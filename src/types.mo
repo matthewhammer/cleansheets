@@ -68,6 +68,8 @@ public type Binop = {
 };
 
 public type Exp = {
+  #ref: NodeId; // adapton ref node
+  #thunk: NodeId; // adapton thunk node
   #name: Name;
   #error: Error;
   #varocc: Name;
