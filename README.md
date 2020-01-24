@@ -4,6 +4,7 @@ CleanSheets
 
 A [spreadsheet application](https://en.wikipedia.org/wiki/Spreadsheet) for the [Internet Computer](https://dfinity.org/).
 
+#### Current status: _Very early days.  Nearterm features still very incomplete._
 
 Nearterm features
 ------------------------

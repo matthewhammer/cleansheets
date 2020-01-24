@@ -5,6 +5,10 @@ import T "../src/types.mo";
 import E "../src/eval.mo";
 import A "../src/adapton.mo";
 
+// Same example (with pictures) from Adapton Rust docs, here:
+//
+//    https://docs.rs/adapton/0/adapton/#demand-driven-change-propagation
+//
 actor SimpleAdaptonDivByZero {
 
   func assertOkPut(r:R.Result<A.NodeId, A.PutError>) : A.NodeId {
@@ -30,15 +34,23 @@ actor SimpleAdaptonDivByZero {
     // "cell 2 holds 1":
     let cell2 : A.NodeId = assertOkPut(A.put(ctx, #nat(2), #nat(1)));
 
-    // "cell 3 holds [[cell1 / cell2]], still unevaluated":
+    // "cell 3 holds [[  if cell2 == 0 then 0
+    //                   else cell1 / cell2    ]], still unevaluated":
+    //
     let cell3 : A.NodeId = assertOkPut(
       A.putThunk(ctx, #nat(3),
                  E.closure(
                    null,
-                   #binOp(#div,
-                          #ref(cell1),
-                          #ref(cell2)))
-      ));
+                   #ifCond(#binOp(#eq,
+                                  #get(#ref(cell2)),
+                                  #nat(0)),
+                           #nat(0),
+                           #binOp(#div,
+                                  #get(#ref(cell1)),
+                                  #get(#ref(cell2))
+                           ))
+                 ))
+    );
 
     // demand division:
     let res1 = assertOkGet(A.get(ctx, cell3));
@@ -53,7 +65,7 @@ actor SimpleAdaptonDivByZero {
     // re-demand division:
     let res2 = assertOkGet(A.get(ctx, cell3));
     switch res1 {
-      case (#err(_)) { };
+      case (#ok(#nat(0))) { };
       case _ { assert false };
     };
 

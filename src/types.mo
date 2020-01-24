@@ -18,8 +18,23 @@ public type OrdComp = {
 
 public type HashVal = Hash.Hash;
 
+// for more helpful dynamic type errors
+public type ValTag = {
+  #unit;
+  #name;
+  #bool;
+  #nat;
+  #int;
+  #list;
+  #grid;
+  #ref;
+  #thunk;
+};
+
 public type Val = {
+  #unit;
   #name: Name;
+  #bool: Bool;
   #text: Text;
   #nat: Nat;
   #int: Int;
@@ -48,7 +63,10 @@ public type GetError = (); // to do
 
 public type ErrorData = {
   #varNotFound: (Env, Name);
-  #missingFeature: Text
+  #missingFeature: Text;
+  #valueMismatch: (Val, ValTag);
+  #getError: GetError;
+  #putError: PutError;
 };
 
 public type Error = {
@@ -65,20 +83,24 @@ public type Binop = {
   #div;
   #mul;
   #cat;
+  #eq;
 };
 
 public type Exp = {
   #ref: NodeId; // adapton ref node
   #thunk: NodeId; // adapton thunk node
+  #unit;
   #name: Name;
   #error: Error;
   #varocc: Name;
   #text: Text;
   #nat: Nat;
   #int: Int;
+  #bool: Bool;
   #list: List<Exp>;
   #grid: [[Exp]];
   #block: Block;
+  #ifCond: (Exp, Exp, Exp);
   #binOp: (Binop, Exp, Exp);
   #put: (Exp, Exp);
   #putThunk: (Exp, Closure);
