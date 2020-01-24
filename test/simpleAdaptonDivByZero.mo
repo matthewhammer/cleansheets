@@ -31,8 +31,8 @@ actor SimpleAdaptonDivByZero {
     // "cell 1 holds 42":
     let cell1 : A.NodeId = assertOkPut(A.put(ctx, #nat(1), #nat(42)));
 
-    // "cell 2 holds 1":
-    let cell2 : A.NodeId = assertOkPut(A.put(ctx, #nat(2), #nat(1)));
+    // "cell 2 holds 2":
+    let cell2 : A.NodeId = assertOkPut(A.put(ctx, #nat(2), #nat(2)));
 
     // "cell 3 holds [[  if cell2 == 0 then 0
     //                   else cell1 / cell2    ]], still unevaluated":
@@ -55,12 +55,12 @@ actor SimpleAdaptonDivByZero {
     // demand division:
     let res1 = assertOkGet(A.get(ctx, cell3));
     switch res1 {
-      case (#ok(#nat(42))) { };
+      case (#ok(#nat(21))) { };
       case _ { assert false };
     };
 
     // "cell 2 holds 0":
-    ignore A.put(ctx, #nat(2), #nat(1));
+    ignore A.put(ctx, #nat(2), #nat(0));
 
     // re-demand division:
     let res2 = assertOkGet(A.get(ctx, cell3));
@@ -70,7 +70,7 @@ actor SimpleAdaptonDivByZero {
     };
 
     // "cell 2 holds 1":
-    ignore A.put(ctx, #nat(2), #nat(1));
+    ignore A.put(ctx, #nat(2), #nat(2));
 
     // re-demand division:
     let res3 = assertOkGet(A.get(ctx, cell3));
