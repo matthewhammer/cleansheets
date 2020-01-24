@@ -152,6 +152,14 @@ public type Action = {
   #get:Result;
 };
 
+// Logs are tree-structured.
+public type LogEvent = {
+  #put: (Val, NodeId, [LogEvent]);
+  #putThunk: (Closure, NodeId, [LogEvent]);
+  #get: (Result, NodeId, [LogEvent]);
+};
+public type LogEventBuf = Buf.Buf<LogEvent>;
+
 public type Node = {
   #ref:Ref;
   #thunk:Thunk;
@@ -159,7 +167,8 @@ public type Node = {
 
 public type Context = {
   var agent: {#editor; #archivist};
-  var edges: Buf.Buf<Edge>;
+  var edges: EdgeBuf;
+  var logeb: LogEventBuf;
   var stack: Stack;
   var store: Store;
 };
