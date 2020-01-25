@@ -1,5 +1,6 @@
 import T "types.mo";
 import A "adapton.mo";
+import Array "mo:stdlib/list.mo";
 import List "mo:stdlib/list.mo";
 import Result "mo:stdlib/result.mo";
 import Buf "mo:stdlib/buf.mo";
@@ -21,6 +22,7 @@ module {
     switch exp {
       case (#block(block)) { evalBlock(actx, env, block, #unit) };
       case (#list(es)) { evalList(actx, env, es, null) };
+      case (#array(es)) { evalArray(actx, env, es, 0, null) };
       case (#error(e)) { #err(e) };
       case (#varocc(x)) {
         switch (envGet(env, x)) {
@@ -51,8 +53,11 @@ module {
                     case (#ok(v2)) {
                            switch (binop) {
                            case (#eq)  { evalEq(v1, v2) };
+                           case (#add) { evalAdd(v1, v2) };
+                           case (#mul) { evalMul(v1, v2) };
+                           case (#sub) { evalSub(v1, v2) };
                            case (#div) { evalDiv(v1, v2) };
-                           case _    { #err(missingFeature("binop: to do")) }
+                           case (#cat) { evalDiv(v1, v2) };
                            }
                          };
                     }
@@ -77,18 +82,43 @@ module {
       case (#int(i))  { #ok(#int(i)) };
       case (#nat(n))  { #ok(#nat(n)) };
       case (#bool(b)) { #ok(#bool(b)) };
-      case (#grid(rows)) {
-          /* func evalRow(row:[Exp]) : [Val] = Array.map(row, eval);
-          #grid(Array.map(rows, evalRow)) */
-            #err(missingFeature("grid expressions"))
-        };
       case (#put(e1, e2)) {
-            #err(missingFeature("put expressions"))
-        };
-      case (#putThunk(e, closure)) {
-             #err(missingFeature("thunk expressions"))
+             switch (evalExp(actx, env, e1)) {
+             case (#err(e)) { #err(e) };
+             case (#ok(v1)) {
+                    switch (evalExp(actx, env, e2)) {
+                    case (#err(e)) { #err(e) };
+                    case (#ok(v2)) {
+                           switch v1 {
+                           case (#name(n)) {
+                                  switch (A.put(actx, n, v2)) {
+                                  case (#err(pe)) { #err(putError(pe)) };
+                                  case (#ok(refId)) { #ok(#ref(refId)) };
+                                  }
+                                };
+                           case v { #err(valueMismatch(v, #name)) };
+                           };
+                         };
+                    }
+                  };
+             }
            };
-
+      case (#putThunk(e1, e2)) {
+             switch (evalExp(actx, env, e1)) {
+             case (#err(e)) { #err(e) };
+             case (#ok(v1)) {
+                    switch v1 {
+                      case (#name(n)) {
+                             switch (A.putThunk(actx, n, closure(env, e2))) {
+                             case (#err(pe)) { #err(putError(pe)) };
+                             case (#ok(thunkId)) { #ok(#ref(thunkId)) };
+                             }
+                           };
+                      case v { #err(valueMismatch(v, #name)) };
+                    }
+                  };
+             }
+           };
     }
   };
 
@@ -105,6 +135,18 @@ module {
              case (#err(e)) { #err(e) };
              }
            };
+    }
+  };
+
+  public func evalArray(actx: A.Context, env:Env, exps:[Exp], expi:Nat, vals:Vals) : Res {
+    if (expi >= exps.len()) {
+      #ok(#array(List.toArray<Val>(List.rev<Val>(vals))))
+    }
+    else {
+      switch (evalExp(actx, env, exps[expi])) {
+      case (#ok(v)) { evalArray(actx, env, exps, expi + 1, ?(v, vals)) };
+      case (#err(e)) { #err(e) };
+      }
     }
   };
 
@@ -129,6 +171,13 @@ module {
     { origin=?("eval.Adapton", null);
       message=("get error: " # "to do");
       data=#getError(ge)
+    }
+  };
+
+  public func putError(pe:T.PutError) : Error {
+    { origin=?("eval.Adapton", null);
+      message=("put error: " # "to do");
+      data=#putError(pe)
     }
   };
 
@@ -175,6 +224,42 @@ module {
       case (#nat(n1), #nat(n2)) { #ok(#nat(n1 / n2)) };
       case (_, _) {
              #err(missingFeature("division; missing case."))
+           }
+    }
+  };
+
+  public func evalAdd(v1:Val, v2:Val) : Res {
+    switch (v1, v2) {
+      case (#nat(n1), #nat(n2)) { #ok(#nat(n1 + n2)) };
+      case (_, _) {
+             #err(missingFeature("addition; missing case."))
+           }
+    }
+  };
+
+  public func evalSub(v1:Val, v2:Val) : Res {
+    switch (v1, v2) {
+      case (#nat(n1), #nat(n2)) { #ok(#nat(n1 - n2)) };
+      case (_, _) {
+             #err(missingFeature("subtraction; missing case."))
+           }
+    }
+  };
+
+  public func evalMul(v1:Val, v2:Val) : Res {
+    switch (v1, v2) {
+      case (#nat(n1), #nat(n2)) { #ok(#nat(n1 * n2)) };
+      case (_, _) {
+             #err(missingFeature("multiplication; missing case."))
+           }
+    }
+  };
+
+  public func evalCat(v1:Val, v2:Val) : Res {
+    switch (v1, v2) {
+      case (#text(n1), #text(n2)) { #ok(#text(n1 # n2)) };
+      case (_, _) {
+             #err(missingFeature("concatenation; missing case."))
            }
     }
   };

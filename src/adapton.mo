@@ -1,9 +1,14 @@
 /*
- Adapton implementation in Motoko, specialized for CleanSheets lang.
+Nominal Adapton implementation in Motoko, specialized for CleanSheets lang.
 
- Two closely-related papers:
-  1. [Incremental Computation with Names](https://arxiv.org/abs/1503.07792)
-  2. [Adapton: composable, demand-driven incremental computation](https://dl.acm.org/doi/abs/10.1145/2666356.2594324)
+All node identities determined user-provided names; Note: Nominal
+Adapton (here) supports "classic Adapton" by choosing names
+structurally, as "full hashes"; we do not support that here, yet.
+
+Two closely-related papers:
+ 1. [Incremental Computation with Names](https://arxiv.org/abs/1503.07792)
+ 2. [Adapton: composable, demand-driven incremental computation](https://dl.acm.org/doi/abs/10.1145/2666356.2594324)
+
 */
 
 import T "types.mo";

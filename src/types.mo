@@ -26,7 +26,7 @@ public type ValTag = {
   #nat;
   #int;
   #list;
-  #grid;
+  #array;
   #ref;
   #thunk;
 };
@@ -38,6 +38,7 @@ public type Val = {
   #text: Text;
   #nat: Nat;
   #int: Int;
+  #array: [Val];
   #list: List<Val>;
   #grid: [[Val]];
   #ref: NodeId; // adapton ref node
@@ -99,12 +100,12 @@ public type Exp = {
   #int: Int;
   #bool: Bool;
   #list: List<Exp>;
-  #grid: [[Exp]];
+  #array: [Exp];
   #block: Block;
   #ifCond: (Exp, Exp, Exp);
   #strictBinOp: (StrictBinOp, Exp, Exp);
   #put: (Exp, Exp);
-  #putThunk: (Exp, Closure);
+  #putThunk: (Exp, Exp);
   #get: Exp;
 };
 
