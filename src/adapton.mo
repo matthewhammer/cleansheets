@@ -51,45 +51,13 @@ public func init() : Context {
   }
 };
 
+// note: the log is just for output, for human-based debugging;
+// it is not to used by evaluation logic, nor by our algorithms here.
 public func getLogEvents(c:Context) : [LogEvent] {
-  c.logeb.toArray()
-};
-
-
-func beginLogEvent(c:Context) : LogEventBuf {
-  let saved = c.logeb;
-  c.logeb := Buf.Buf<LogEvent>(03);
-  saved
-};
-
-func errorLogEvent(c:Context, restore:LogEventBuf) {
-  //let events = c.logeb.toArray();
-  //let logEvent = fillIt(events);
-  //c.logeb.add(logEvent);
-  c.logeb := restore;
-};
-
-func debugLogEvent(le:LogEvent):LogEvent {
-  le
-};
-
-func endLogEvent(c:Context,
-                 tag:LogEventTag,
-                 restore:LogEventBuf)
-{
-  let events = c.logeb.toArray();
-  let logEvent : LogEvent = switch tag {
-  case (#put(v, n))      { #put(v, n,      events) };
-  case (#putThunk(c, n)) { #putThunk(c, n, events) };
-  case (#get(r, n))      { #get(r, n,      events) };
-  case (#dirtyIncomingTo(n)){ #dirtyIncomingTo(n,events) };
-  case (#dirtyEdgeFrom(n)){ #dirtyEdgeFrom(n,events) };
-  case (#cleanEdgeTo(n,f)) { #cleanEdgeTo(n,f,events) };
-  case (#cleanThunk(n,f)) { #cleanThunk(n,f,events) };
-  case (#evalThunk(n,r)) { #evalThunk(n,r,events) };
-  };
-  c.logeb := restore;
-  c.logeb.add(debugLogEvent(logEvent));
+  switch (c.agent) {
+    case (#editor) { c.logeb.toArray() };
+    case (#archivist) { assert false ; loop { } };
+  }
 };
 
 public func put(c:Context, n:Name, val:Val) : R.Result<NodeId, T.PutError> {
@@ -398,5 +366,40 @@ func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
   res
 };
 
+func beginLogEvent(c:Context) : LogEventBuf {
+  let saved = c.logeb;
+  c.logeb := Buf.Buf<LogEvent>(03);
+  saved
+};
+
+func errorLogEvent(c:Context, restore:LogEventBuf) {
+  //let events = c.logeb.toArray();
+  //let logEvent = fillIt(events);
+  //c.logeb.add(logEvent);
+  c.logeb := restore;
+};
+
+func debugLogEvent(le:LogEvent):LogEvent {
+  le
+};
+
+func endLogEvent(c:Context,
+                 tag:LogEventTag,
+                 restore:LogEventBuf)
+{
+  let events = c.logeb.toArray();
+  let logEvent : LogEvent = switch tag {
+  case (#put(v, n))      { #put(v, n,      events) };
+  case (#putThunk(c, n)) { #putThunk(c, n, events) };
+  case (#get(r, n))      { #get(r, n,      events) };
+  case (#dirtyIncomingTo(n)){ #dirtyIncomingTo(n,events) };
+  case (#dirtyEdgeFrom(n)){ #dirtyEdgeFrom(n,events) };
+  case (#cleanEdgeTo(n,f)) { #cleanEdgeTo(n,f,events) };
+  case (#cleanThunk(n,f)) { #cleanThunk(n,f,events) };
+  case (#evalThunk(n,r)) { #evalThunk(n,r,events) };
+  };
+  c.logeb := restore;
+  c.logeb.add(debugLogEvent(logEvent));
+};
 
 }
