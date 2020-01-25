@@ -124,16 +124,7 @@ public type Closure = {
 public module Adapton {
 
 public type Store = H.HashMap<Name, Node>;
-public type Stack = L.List<Frame>;
-public type FramePrefix = { // for debugging
-  events:[LogEvent];
-  edges:[Edge];
-};
-public type Frame = {
-  prefix:FramePrefix; // for debugging
-  name:Name;
-  node:Thunk; // for debugging
-};
+public type Stack = L.List<Name>;
 public type EdgeBuf = Buf.Buf<Edge>;
 
 public type Ref = {
@@ -183,6 +174,7 @@ public type LogEventTag = {
   #evalThunk:(Name, Result);
 };
 public type LogEventBuf = Buf.Buf<LogEvent>;
+public type LogBufStack = List.List<LogEventBuf>;
 
 public type Node = {
   #ref:Ref;
@@ -192,9 +184,11 @@ public type Node = {
 public type Context = {
   var agent: {#editor; #archivist};
   var edges: EdgeBuf;
-  var logeb: LogEventBuf;
   var stack: Stack;
   var store: Store;
+  // logging for debugging; not essential for other state:
+  var logBuf: LogEventBuf;
+  var logStack: LogBufStack;
 };
 
 };
