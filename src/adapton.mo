@@ -186,7 +186,6 @@ func addBackEdge(c:Context, edge:Edge) {
            edgeBuf.add(edge);
          }
   }
-  // to do -- update edge's dependency's list of dependents to include this edge, if it doesn't already
 };
 
 func remBackEdge(c:Context, edge:Edge) {
@@ -236,6 +235,9 @@ func thunkIsDirty(t:Thunk) : Bool {
 };
 
 func dirtyThunk(c:Context, n:Name, thunkNode:Thunk) {
+  // to do: if the node is on the stack,
+  //   then the DCG is overwriting names
+  //   too often for change propagation to follow soundly; signal an error.
   let restore = beginLogEvent(c);
   for (edge in thunkNode.incoming.iter()) {
     dirtyEdge(c, edge)

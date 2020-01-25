@@ -85,7 +85,7 @@ actor SimpleAdaptonDivByZero {
       case _ { assert false };
     };
 
-    // "cell 2 holds 1":
+    // "cell 2 holds 2":
     ignore A.put(ctx, #nat(2), #nat(2));
 
     // re-demand division:
