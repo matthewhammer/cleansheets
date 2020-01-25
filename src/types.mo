@@ -124,7 +124,16 @@ public type Closure = {
 public module Adapton {
 
 public type Store = H.HashMap<Name, Node>;
-public type Stack = L.List<(Name, Node)>;
+public type Stack = L.List<Frame>;
+public type FramePrefix = { // for debugging
+  events:[LogEvent];
+  edges:[Edge];
+};
+public type Frame = {
+  prefix:FramePrefix; // for debugging
+  name:Name;
+  node:Thunk; // for debugging
+};
 public type EdgeBuf = Buf.Buf<Edge>;
 
 public type Ref = {
@@ -154,9 +163,24 @@ public type Action = {
 
 // Logs are tree-structured.
 public type LogEvent = {
-  #put: (Val, NodeId, [LogEvent]);
-  #putThunk: (Closure, NodeId, [LogEvent]);
-  #get: (Result, NodeId, [LogEvent]);
+  #put:      (Name, Val, [LogEvent]);
+  #putThunk: (Name, Closure, [LogEvent]);
+  #get:      (Name, Result, [LogEvent]);
+  #dirtyIncomingTo:(Name, [LogEvent]);
+  #dirtyEdgeFrom:(Name, [LogEvent]);
+  #cleanEdgeTo:(Name, Bool, [LogEvent]);
+  #cleanThunk:(Name, Bool, [LogEvent]);
+  #evalThunk:(Name, Result, [LogEvent]);  
+};
+public type LogEventTag = {
+  #put:      (Name, Val);
+  #putThunk: (Name, Closure);
+  #get:      (Name, Result);
+  #dirtyIncomingTo:Name;
+  #dirtyEdgeFrom: Name;
+  #cleanEdgeTo:(Name, Bool);
+  #cleanThunk:(Name, Bool);
+  #evalThunk:(Name, Result);
 };
 public type LogEventBuf = Buf.Buf<LogEvent>;
 

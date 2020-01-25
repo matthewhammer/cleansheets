@@ -33,6 +33,9 @@ public type Store = T.Adapton.Store;
 public type Stack = T.Adapton.Stack;
 public type Edge = T.Adapton.Edge;
 public type Action = T.Adapton.Action;
+public type LogEvent = T.Adapton.LogEvent;
+public type LogEventTag = T.Adapton.LogEventTag;
+public type LogEventBuf = T.Adapton.LogEventBuf;
 
 public func init() : Context {
   let st : Store = H.HashMap<Name, Node>(03, T.nameEq, T.nameHash);
@@ -48,27 +51,71 @@ public func init() : Context {
   }
 };
 
+public func getLogEvents(c:Context) : [LogEvent] {
+  c.logeb.toArray()
+};
+
+
+func beginLogEvent(c:Context) : LogEventBuf {
+  let saved = c.logeb;
+  c.logeb := Buf.Buf<LogEvent>(03);
+  saved
+};
+
+func errorLogEvent(c:Context, restore:LogEventBuf) {
+  //let events = c.logeb.toArray();
+  //let logEvent = fillIt(events);
+  //c.logeb.add(logEvent);
+  c.logeb := restore;
+};
+
+func debugLogEvent(le:LogEvent):LogEvent {
+  le
+};
+
+func endLogEvent(c:Context,
+                 tag:LogEventTag,
+                 restore:LogEventBuf)
+{
+  let events = c.logeb.toArray();
+  let logEvent : LogEvent = switch tag {
+  case (#put(v, n))      { #put(v, n,      events) };
+  case (#putThunk(c, n)) { #putThunk(c, n, events) };
+  case (#get(r, n))      { #get(r, n,      events) };
+  case (#dirtyIncomingTo(n)){ #dirtyIncomingTo(n,events) };
+  case (#dirtyEdgeFrom(n)){ #dirtyEdgeFrom(n,events) };
+  case (#cleanEdgeTo(n,f)) { #cleanEdgeTo(n,f,events) };
+  case (#cleanThunk(n,f)) { #cleanThunk(n,f,events) };
+  case (#evalThunk(n,r)) { #evalThunk(n,r,events) };
+  };
+  c.logeb := restore;
+  c.logeb.add(debugLogEvent(logEvent));
+};
+
 public func put(c:Context, n:Name, val:Val) : R.Result<NodeId, T.PutError> {
+  let logSaved = beginLogEvent(c);
   let newRefNode : Ref = {
     incoming=newEdgeBuf();
     content=val;
   };
   switch (c.store.set(n, #ref(newRefNode))) {
   case null { /* no prior node of this name */ };
-  case (?#thunk(oldThunk)) { dirtyThunk(c, oldThunk) };
+  case (?#thunk(oldThunk)) { dirtyThunk(c, n, oldThunk) };
   case (?#ref(oldRef)) {
          if (T.valEq(oldRef.content, val)) {
            // matching values ==> no dirtying.
          } else {
-           dirtyRef(c, oldRef)
+           dirtyRef(c, n, oldRef)
          }
        };
   };
   addEdge(c, {name=n}, #put(val));
+  endLogEvent(c, #put(n, val), logSaved);
   #ok({ name=n })
 };
 
 public func putThunk(c:Context, n:Name, cl:Closure) : R.Result<NodeId, T.PutError> {
+  let logSaved = beginLogEvent(c);
   let newThunkNode : Thunk = {
     incoming=newEdgeBuf();
     outgoing=[];
@@ -83,21 +130,24 @@ public func putThunk(c:Context, n:Name, cl:Closure) : R.Result<NodeId, T.PutErro
          } else {
            // to do: if the node exists and the name is currently on the stack,
            //   then the thunk-stack is cyclic; signal an error.
-           dirtyThunk(c, oldThunk)
+           dirtyThunk(c, n, oldThunk)
          }
        };
-  case (?#ref(oldRef)) { dirtyRef(c, oldRef) };
+  case (?#ref(oldRef)) { dirtyRef(c, n, oldRef) };
   };
   addEdge(c, {name=n}, #putThunk(cl));
+  endLogEvent(c, #putThunk(n, cl), logSaved);
   #ok({ name=n })
 };
 
 public func get(c:Context, n:NodeId) : R.Result<Result, T.GetError> {
+  let logSaved = beginLogEvent(c);
   switch (c.store.get(n.name)) {
     case null { #err(()) /* error: dangling/forged name posing as live node id. */ };
     case (?#ref(refNode)) {
            let val = refNode.content;
            let res = #ok(val);
+           endLogEvent(c, #get(n.name, res), logSaved);
            addEdge(c, n, #get(res));
            #ok(res)
          };
@@ -106,20 +156,24 @@ public func get(c:Context, n:NodeId) : R.Result<Result, T.GetError> {
              case null {
                     assert (thunkNode.incoming.len() == 0);
                     let res = evalThunk(c, n.name, thunkNode);
+                    endLogEvent(c, #get(n.name, res), logSaved);
                     addEdge(c, n, #get(res));
                     #ok(res)
                   };
              case (?oldResult) {
                     if (thunkIsDirty(thunkNode)) {
-                      if(cleanThunk(c, thunkNode)) {
+                      if(cleanThunk(c, n.name, thunkNode)) {
+                        endLogEvent(c, #get(n.name, oldResult), logSaved);
                         addEdge(c, n, #get(oldResult));
                         #ok(oldResult)
                       } else {
                         let res = evalThunk(c, n.name, thunkNode);
+                        endLogEvent(c, #get(n.name, res), logSaved);
                         addEdge(c, n, #get(res));
                         #ok(res)
                       }
                     } else {
+                      endLogEvent(c, #get(n.name, oldResult), logSaved);
                       addEdge(c, n, #get(oldResult));
                       #ok(oldResult)
                     }
@@ -188,8 +242,8 @@ func addEdge(c:Context, target:NodeId, action:Action) {
   case (#archivist) {
          switch (c.stack) {
          case null { P.unreachable() };
-         case (?((source, _), _)) {
-                let edge = newEdge({name=source}, target, action);
+         case (?(frame, _)) {
+                let edge = newEdge({name=frame.name}, target, action);
                 c.edges.add(edge)
               };
          }
@@ -213,35 +267,42 @@ func thunkIsDirty(t:Thunk) : Bool {
   false
 };
 
-func dirtyThunk(c:Context, thunkNode:Thunk) {
+func dirtyThunk(c:Context, n:Name, thunkNode:Thunk) {
+  let restore = beginLogEvent(c);
   for (edge in thunkNode.incoming.iter()) {
     dirtyEdge(c, edge)
-  }
+  };
+  endLogEvent(c, #dirtyIncomingTo(n), restore);
 };
 
-func dirtyRef(c:Context, refNode:Ref) {
+func dirtyRef(c:Context, n:Name, refNode:Ref) {
+  let restore = beginLogEvent(c);
   for (edge in refNode.incoming.iter()) {
     dirtyEdge(c, edge)
-  }
+  };
+  endLogEvent(c, #dirtyIncomingTo(n), restore);
 };
 
 func dirtyEdge(c:Context, edge:Edge) {
   if (edge.dirtyFlag) {
     // graph invariants ==> nothing to do.
   } else {
+    let restore = beginLogEvent(c);
     edge.dirtyFlag := true;
     switch (c.store.get(edge.dependent.name)) {
     case null { P.unreachable() };
     case (?#ref(_)) { P.unreachable() };
     case (?#thunk(thunkNode)) {
-           dirtyThunk(c, thunkNode)
+           dirtyThunk(c, edge.dependent.name, thunkNode)
          };
-    }
+    };
+    endLogEvent(c, #dirtyEdgeFrom(edge.dependent.name), restore);
   }
 };
 
 func cleanEdge(c:Context, e:Edge) : Bool {
-  if (e.dirtyFlag) {
+  let restore = beginLogEvent(c);
+  let successFlag = if (e.dirtyFlag) {
     switch (e.checkpoint, c.store.get(e.dependency.name)) {
     case (#get(oldRes), ?#ref(refNode)) {
            if (T.resultEq(oldRes, #ok(refNode.content))) {
@@ -281,21 +342,27 @@ func cleanEdge(c:Context, e:Edge) : Bool {
     }
   } else {
     true // already clean
-  }
+  };
+  endLogEvent(c, #cleanEdgeTo(e.dependency.name, successFlag), restore);
+  successFlag;
 };
 
-func cleanThunk(c:Context, t:Thunk) : Bool {
+func cleanThunk(c:Context, n:Name, t:Thunk) : Bool {
+  let restore = beginLogEvent(c);
   for (i in t.outgoing.keys()) {
     if (cleanEdge(c, t.outgoing[i])) {
       /* continue */
     } else {
+      endLogEvent(c, #cleanThunk(n, false), restore);
       return false // outgoing[i] could not be cleaned.
     }
   };
+  endLogEvent(c, #cleanThunk(n, true), restore);
   true
 };
 
 func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
+  let restore = beginLogEvent(c);
   let oldEdges = c.edges;
   let oldStack = c.stack;
   let oldAgent = c.agent;
@@ -303,7 +370,14 @@ func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
   c.agent := #archivist;
   c.logeb := Buf.Buf<T.Adapton.LogEvent>(03);
   c.edges := Buf.Buf<Edge>(03);
-  c.stack := ?((nodeName, #thunk(thunkNode)), oldStack);
+  c.stack := ?({prefix={
+                  edges=oldEdges.toArray();
+                  events=oldLogEB.toArray();
+                };
+                name=nodeName;
+                node=thunkNode;
+               },
+               oldStack);
   remBackEdges(c, thunkNode.outgoing);
   let res = thunkNode.closure.eval(c);
   let edges = c.edges.toArray();
@@ -320,6 +394,7 @@ func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
   };
   ignore c.store.set(nodeName, #thunk(newNode));
   addBackEdges(c, newNode.outgoing);
+  endLogEvent(c, #evalThunk(nodeName, res), restore);
   res
 };
 
