@@ -164,13 +164,14 @@ func newEdge(source:NodeId, target:NodeId, action:Action) : Edge {
   }
 };
 
+func incomingEdgeBuf(n:Node) : T.Adapton.EdgeBuf {
+  switch n {
+  case (#ref(n)) { n.incoming };
+  case (#thunk(t)) { t.incoming };
+  }
+};
+
 func addBackEdge(c:Context, edge:Edge) {
-  func incomingEdgeBuf(n:Node) : T.Adapton.EdgeBuf {
-    switch n {
-    case (#ref(n)) { n.incoming };
-    case (#thunk(t)) { t.incoming };
-    }
-  };
   switch (c.store.get(edge.dependency.name)) {
     case null { P.unreachable() };
     case (?targetNode) {
@@ -194,7 +195,23 @@ func addBackEdge(c:Context, edge:Edge) {
 };
 
 func remBackEdge(c:Context, edge:Edge) {
-  // to do -- update this edge's dependency's list of dependents to _not_ include this edge
+  switch (c.store.get(edge.dependency.name)) {
+  case (?node) {
+         let nodeIncoming = incomingEdgeBuf(node);
+         let newIncoming : EdgeBuf = Buf.Buf<Edge>(03);
+         for (incomingEdge in nodeIncoming.iter()) {
+           if (T.nameEq(edge.dependent.name, incomingEdge.dependent.name)) {
+             // same source, so filter otherEdge out.
+             // (we do not bother comparing actions; it's not required.)
+           } else {
+             newIncoming.add(incomingEdge)
+           }
+         };
+         nodeIncoming.clear();
+         nodeIncoming.append(newIncoming);
+       };
+  case _ { assert false };
+  }
 };
 
 func addBackEdges(c:Context, edges:[Edge]) {
@@ -211,6 +228,7 @@ func remBackEdges(c:Context, edges:[Edge]) {
 
 func addEdge(c:Context, target:NodeId, action:Action) {
   let edge = switch (c.agent) {
+  case (#editor) { /* the editor role is not recorded or memoized */ };
   case (#archivist) {
          switch (c.stack) {
          case null { P.unreachable() };
@@ -220,15 +238,10 @@ func addEdge(c:Context, target:NodeId, action:Action) {
               };
          }
        };
-  case (#editor) {
-         // no need to do anything;
-         // the editor role is not recorded or memoized
-       };
   };
 };
 
 func newEdgeBuf() : T.Adapton.EdgeBuf { Buf.Buf<Edge>(03) };
-
 
 func thunkIsDirty(t:Thunk) : Bool {
   for (i in t.outgoing.keys()) {
@@ -260,7 +273,7 @@ func dirtyRef(c:Context, n:Name, refNode:Ref) {
 
 func dirtyEdge(c:Context, edge:Edge) {
   if (edge.dirtyFlag) {
-    // graph invariants ==> nothing to do.
+    // graph invariants ==> dirtying is already done.
   } else {
     beginLogEvent(c);
     edge.dirtyFlag := true;
@@ -396,3 +409,4 @@ func endLogEvent(c:Context,
 };
 
 }
+
