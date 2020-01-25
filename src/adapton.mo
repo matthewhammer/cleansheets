@@ -40,10 +40,12 @@ public type LogEventBuf = T.Adapton.LogEventBuf;
 public type LogBufStack = T.Adapton.LogBufStack;
 
 public func init() : Context {
+  // to do -- compiler bug? -- IR typing issue when this line is inlined to its use below:
+  let a : {#editor;#archivist} = (#editor : {#editor;#archivist});
   { var store : Store = H.HashMap<Name, Node>(03, T.nameEq, T.nameHash);
     var stack : Stack = null;
     var edges : EdgeBuf = Buf.Buf<Edge>(03);
-    var agent = (#editor : {#editor;#archivist});
+    var agent = a;
     var logBuf : LogEventBuf = Buf.Buf<T.Adapton.LogEvent>(03);
     var logStack : LogBufStack = null;
   }
