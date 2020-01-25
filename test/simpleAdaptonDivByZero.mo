@@ -182,4 +182,4 @@ actor SimpleAdaptonDivByZero {
   };
 };
 
-SimpleAdaptonDivByZero.go();
+//SimpleAdaptonDivByZero.go();
