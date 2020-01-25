@@ -100,7 +100,7 @@ actor SimpleAdaptonDivByZero {
   };
 };
 
-SimpleAdaptonDivByZero.go();
+//SimpleAdaptonDivByZero.go();
 
 /*
 Log summary:
