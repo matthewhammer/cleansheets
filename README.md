@@ -2,12 +2,12 @@
 CleanSheets
 ===============================================
 
-A [spreadsheet application](https://en.wikipedia.org/wiki/Spreadsheet) for the [Internet Computer](https://dfinity.org/faq/what-is-the-internet-computer), written in [Motoko](https://dfinity.org/faq/what-is-motoko).
+A [spreadsheet-like application](https://en.wikipedia.org/wiki/Spreadsheet) for the [Internet Computer](https://dfinity.org/faq/what-is-the-internet-computer), written in [Motoko](https://dfinity.org/faq/what-is-motoko).
 
-#### Current status: _Very early days.  Nearterm features still very incomplete._
+#### Current status: _Early days.  First steps are complete, but require more testing._
 
-Nearterm features
-------------------------
+Foundation and first steps
+-------------------------------
 - Simple **expression language** based on ideas from existing functional and dataflow languages.
 - Expressive **value language** where each "sheet" or "cell" may have internal structures, nesting and cross-linking.
 - Dependency graph and incremental recomputation based on ideas from the [Adapton project](http://adapton.org).
