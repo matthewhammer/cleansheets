@@ -30,9 +30,13 @@ actor SimpleAdaptonDivByZero {
 
     // "cell 1 holds 42":
     let cell1 : A.NodeId = assertOkPut(A.put(ctx, #nat(1), #nat(42)));
+    A.assertLogEventLast
+    (ctx, #put(#nat(1), #nat(42), []));
 
     // "cell 2 holds 2":
     let cell2 : A.NodeId = assertOkPut(A.put(ctx, #nat(2), #nat(2)));
+    A.assertLogEventLast
+    (ctx, #put(#nat(2), #nat(2), []));
 
     // "cell 3 holds a suspended closure for this expression:
     //
@@ -182,4 +186,4 @@ actor SimpleAdaptonDivByZero {
   };
 };
 
-//SimpleAdaptonDivByZero.go();
+SimpleAdaptonDivByZero.go();

@@ -162,7 +162,7 @@ public type LogEvent = {
   #dirtyEdgeFrom:(Name, [LogEvent]);
   #cleanEdgeTo:(Name, Bool, [LogEvent]);
   #cleanThunk:(Name, Bool, [LogEvent]);
-  #evalThunk:(Name, Result, [LogEvent]);  
+  #evalThunk:(Name, Result, [LogEvent]);
 };
 public type LogEventTag = {
   #put:      (Name, Val);
@@ -242,6 +242,55 @@ public func nameEq(n1:Name, n2:Name) : Bool {
          } else { false };
        };
   case (_, _) { false };
+  }
+};
+
+public type LogEvent = Adapton.LogEvent;
+
+public func logEventsEq (e1:[LogEvent], e2:[LogEvent]) : Bool {
+  if (e1.len() == e2.len()) {
+    for (i in e1.keys()) {
+      if (logEventEq(e1[i], e2[i])) {
+        /* continue */
+      } else {
+        return false
+      }
+    };
+    true
+  } else { false }
+};
+
+public func logEventEq (e1:LogEvent, e2:LogEvent) : Bool {
+  switch (e1, e2) {
+  case (#put(n1, v1, es1), #put(n2, v2, es2)) {
+         nameEq(n1, n2) and valEq(v1, v2) and logEventsEq(es1, es2)
+       };
+  case (#putThunk(n1, c1, es1), #putThunk(n2, c2, es2)) {
+         P.nyi()
+       };
+  case (#get(n1, r1, es1), #get(n2, r2, es2)) {
+         P.nyi()
+
+       };
+  case (#dirtyIncomingTo(n1, es1), #dirtyIncomingTo(n2, es2)) {
+         P.nyi()
+
+       };
+  case (#cleanEdgeTo(n1, f1, es1), #cleanEdgeTo(n2, f2, es2)) {
+         P.nyi()
+
+       };
+  case (#cleanThunk(n1, f1, es1), #cleanThunk(n2, f2, es2)) {
+         P.nyi()
+
+       };
+  case (#evalThunk(n1, r1, es1), #evalThunk(n2, r2, es2)) {
+         P.nyi()
+
+       };
+  case (_, _) {
+         false
+       }
   }
 };
 

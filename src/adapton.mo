@@ -65,6 +65,17 @@ public func getLogEvents(c:Context) : [LogEvent] {
   }
 };
 
+// assert last log event
+public func assertLogEventLast(c:Context, expected:LogEvent) {
+  let items = c.logBuf.toArray();
+  if (items.len() > 0) {
+    let actual = items[items.len() - 1];
+    assert T.logEventEq(actual, expected)
+  } else { // no log event
+    assert false
+  }
+};
+
 public func put(c:Context, n:Name, val:Val) : R.Result<NodeId, T.PutError> {
   beginLogEvent(c);
   let newRefNode : Ref = {
@@ -409,4 +420,3 @@ func endLogEvent(c:Context,
 };
 
 }
-
