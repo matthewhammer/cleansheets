@@ -2,8 +2,8 @@ import R "mo:stdlib/result.mo";
 import P "mo:stdlib/prelude.mo";
 
 import T "../src/types.mo";
-import E "../src/eval.mo";
 import A "../src/adapton.mo";
+import E "../src/eval.mo";
 
 /*
 
@@ -25,15 +25,15 @@ still pictures from the talk.
 actor SimpleAdaptonDivByZero {
 
   public func go() {
-    let ctx : A.Context = A.init();
+    let ctx : T.Adapton.Context = A.init();
 
     // "cell 1 holds 42":
-    let cell1 : A.NodeId = assertOkPut(A.put(ctx, #nat(1), #nat(42)));
+    let cell1 : T.Adapton.NodeId = assertOkPut(A.put(ctx, #nat(1), #nat(42)));
     A.assertLogEventLast
     (ctx, #put(#nat(1), #nat(42), []));
 
     // "cell 2 holds 2":
-    let cell2 : A.NodeId = assertOkPut(A.put(ctx, #nat(2), #nat(2)));
+    let cell2 : T.Adapton.NodeId = assertOkPut(A.put(ctx, #nat(2), #nat(2)));
     A.assertLogEventLast
     (ctx, #put(#nat(2), #nat(2), []));
 
@@ -43,7 +43,7 @@ actor SimpleAdaptonDivByZero {
     //
     // ...and it is still unevaluated".
     //
-    let cell3 : A.NodeId = assertOkPut(
+    let cell3 : T.Adapton.NodeId = assertOkPut(
       A.putThunk(ctx, #nat(3),
                  E.closure(
                    null,
@@ -60,7 +60,7 @@ actor SimpleAdaptonDivByZero {
     //
     // ...and it is still unevaluated".
     //
-    let cell4 : A.NodeId = assertOkPut(
+    let cell4 : T.Adapton.NodeId = assertOkPut(
       A.putThunk(ctx, #nat(4),
                  E.closure(
                    null,
@@ -190,14 +190,14 @@ actor SimpleAdaptonDivByZero {
   };
 
 
-  func assertOkPut(r:R.Result<A.NodeId, A.PutError>) : A.NodeId {
+  func assertOkPut(r:R.Result<T.Adapton.NodeId, T.Adapton.PutError>) : T.Adapton.NodeId {
     switch r {
       case (#ok(id)) { id };
       case _ { P.unreachable() };
     }
   };
 
-  func assertOkGet(r:R.Result<T.Result, A.GetError>) : T.Result {
+  func assertOkGet(r:R.Result<T.Adapton.Result, T.Adapton.GetError>) : T.Eval.Result {
     switch r {
       case (#ok(res)) { res };
       case _ { P.unreachable() };

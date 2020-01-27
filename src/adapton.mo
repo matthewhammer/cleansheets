@@ -11,7 +11,6 @@ Two closely-related papers:
 
 */
 
-import T "types.mo";
 import H "mo:stdlib/hashMap.mo";
 import Hash "mo:stdlib/hash.mo";
 import Buf "mo:stdlib/buf.mo";
@@ -19,16 +18,16 @@ import L "mo:stdlib/list.mo";
 import R "mo:stdlib/result.mo";
 import P "mo:stdlib/prelude.mo";
 
+import T "types.mo";
+
 module {
-public type Val = T.Val;
-public type Exp = T.Exp;
-public type Error = T.Error;
-public type PutError = T.PutError;
-public type GetError = T.GetError;
-public type NodeId = T.NodeId;
-public type Name = T.Name;
-public type Closure = T.Closure;
-public type Result = T.Result;
+public type Val = T.Eval.Val;
+public type Exp = T.Eval.Exp;
+public type Error = T.Eval.Error;
+public type NodeId = T.Eval.NodeId;
+public type Name = T.Eval.Name;
+public type Closure = T.Closure.Closure;
+public type Result = T.Eval.Result;
 
 public type Context = T.Adapton.Context;
 public type Thunk = T.Adapton.Thunk;
@@ -39,6 +38,10 @@ public type Stack = T.Adapton.Stack;
 public type Edge = T.Adapton.Edge;
 public type EdgeBuf = T.Adapton.EdgeBuf;
 public type Action = T.Adapton.Action;
+
+public type PutError = T.Adapton.PutError;
+public type GetError = T.Adapton.GetError;
+
 public type LogEvent = T.Adapton.LogEvent;
 public type LogEventTag = T.Adapton.LogEventTag;
 public type LogEventBuf = T.Adapton.LogEventBuf;
@@ -47,7 +50,7 @@ public type LogBufStack = T.Adapton.LogBufStack;
 public func init() : Context {
   // to do -- compiler bug? -- IR typing issue when this line is inlined to its use below:
   let a : {#editor;#archivist} = (#editor : {#editor;#archivist});
-  { var store : Store = H.HashMap<Name, Node>(03, T.nameEq, T.nameHash);
+  { var store : Store = H.HashMap<Name, Node>(03, T.Eval.nameEq, T.Eval.nameHash);
     var stack : Stack = null;
     var edges : EdgeBuf = Buf.Buf<Edge>(03);
     var agent = a;
@@ -70,13 +73,15 @@ public func assertLogEventLast(c:Context, expected:LogEvent) {
   let items = c.logBuf.toArray();
   if (items.len() > 0) {
     let actual = items[items.len() - 1];
-    assert T.logEventEq(actual, expected)
+    assert T.Adapton.logEventEq(actual, expected)
   } else { // no log event
     assert false
   }
 };
 
-public func put(c:Context, n:Name, val:Val) : R.Result<NodeId, T.PutError> {
+public func put(c:Context, n:Name, val:Val)
+  : R.Result<NodeId, PutError>
+{
   beginLogEvent(c);
   let newRefNode : Ref = {
     incoming=newEdgeBuf();
@@ -86,7 +91,7 @@ public func put(c:Context, n:Name, val:Val) : R.Result<NodeId, T.PutError> {
   case null { /* no prior node of this name */ };
   case (?#thunk(oldThunk)) { dirtyThunk(c, n, oldThunk) };
   case (?#ref(oldRef)) {
-         if (T.valEq(oldRef.content, val)) {
+         if (T.Eval.valEq(oldRef.content, val)) {
            // matching values ==> no dirtying.
          } else {
            dirtyRef(c, n, oldRef)
@@ -98,7 +103,9 @@ public func put(c:Context, n:Name, val:Val) : R.Result<NodeId, T.PutError> {
   #ok({ name=n })
 };
 
-public func putThunk(c:Context, n:Name, cl:Closure) : R.Result<NodeId, T.PutError> {
+public func putThunk(c:Context, n:Name, cl:Closure)
+  : R.Result<NodeId, T.Adapton.PutError>
+{
   let logSaved = beginLogEvent(c);
   let newThunkNode : Thunk = {
     incoming=newEdgeBuf();
@@ -109,7 +116,7 @@ public func putThunk(c:Context, n:Name, cl:Closure) : R.Result<NodeId, T.PutErro
   switch (c.store.set(n, #thunk(newThunkNode))) {
   case null { /* no prior node of this name */ };
   case (?#thunk(oldThunk)) {
-         if (T.closureEq(oldThunk.closure, cl)) {
+         if (T.Closure.closureEq(oldThunk.closure, cl)) {
            // matching closures ==> no dirtying.
          } else {
            // to do: if the node exists and the name is currently on the stack,
@@ -124,7 +131,7 @@ public func putThunk(c:Context, n:Name, cl:Closure) : R.Result<NodeId, T.PutErro
   #ok({ name=n })
 };
 
-public func get(c:Context, n:NodeId) : R.Result<Result, T.GetError> {
+public func get(c:Context, n:NodeId) : R.Result<Result, GetError> {
   let logSaved = beginLogEvent(c);
   switch (c.store.get(n.name)) {
     case null { #err(()) /* error: dangling/forged name posing as live node id. */ };
@@ -189,8 +196,8 @@ func addBackEdge(c:Context, edge:Edge) {
            let edgeBuf = incomingEdgeBuf(targetNode);
            for (existing in edgeBuf.iter()) {
              // same edge means same source and action tag; return early.
-             if (T.nameEq(edge.dependent.name,
-                          existing.dependent.name)) {
+             if (T.Eval.nameEq(edge.dependent.name,
+                               existing.dependent.name)) {
                switch (edge.checkpoint, existing.checkpoint) {
                  case (#get(_), #get(_)) { return () };
                  case (#put(_), #put(_)) { return () };
@@ -211,7 +218,8 @@ func remBackEdge(c:Context, edge:Edge) {
          let nodeIncoming = incomingEdgeBuf(node);
          let newIncoming : EdgeBuf = Buf.Buf<Edge>(03);
          for (incomingEdge in nodeIncoming.iter()) {
-           if (T.nameEq(edge.dependent.name, incomingEdge.dependent.name)) {
+           if (T.Eval.nameEq(edge.dependent.name, 
+                             incomingEdge.dependent.name)) {
              // same source, so filter otherEdge out.
              // (we do not bother comparing actions; it's not required.)
            } else {
@@ -304,19 +312,19 @@ func cleanEdge(c:Context, e:Edge) : Bool {
   let successFlag = if (e.dirtyFlag) {
     switch (e.checkpoint, c.store.get(e.dependency.name)) {
     case (#get(oldRes), ?#ref(refNode)) {
-           if (T.resultEq(oldRes, #ok(refNode.content))) {
+           if (T.Eval.resultEq(oldRes, #ok(refNode.content))) {
              e.dirtyFlag := false;
              true
            } else { false }
          };
     case (#put(oldVal), ?#ref(refNode)) {
-           if (T.valEq(oldVal, refNode.content)) {
+           if (T.Eval.valEq(oldVal, refNode.content)) {
              e.dirtyFlag := false;
              true
            } else { false }
          };
     case (#putThunk(oldClos), ?#thunk(thunkNode)) {
-           if (T.closureEq(oldClos, thunkNode.closure)) {
+           if (T.Closure.closureEq(oldClos, thunkNode.closure)) {
              e.dirtyFlag := false;
              true
            } else { false }
@@ -328,7 +336,7 @@ func cleanEdge(c:Context, e:Edge) : Bool {
            };
            // dirty flag true ==> we must re-evaluate thunk:
            let newRes = evalThunk(c, e.dependency.name, thunkNode);
-           if (T.resultEq(oldRes, newRes)) {
+           if (T.Eval.resultEq(oldRes, newRes)) {
              e.dirtyFlag := false;
              true // equal results ==> clean.
            } else {

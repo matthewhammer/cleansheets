@@ -1,23 +1,24 @@
 import T "types.mo";
 import A "adapton.mo";
+
 import Array "mo:stdlib/list.mo";
 import List "mo:stdlib/list.mo";
 import Result "mo:stdlib/result.mo";
 import Buf "mo:stdlib/buf.mo";
 
 module {
-  public type Exp = T.Exp;
+  public type Exp = T.Eval.Exp;
   public type Exps = List.List<Exp>;
-  public type Block = T.Block;
-  public type Val = T.Val;
+  public type Block = T.Eval.Block;
+  public type Val = T.Eval.Val;
   public type Vals = List.List<Val>;
-  public type ValTag = T.ValTag;
-  public type Error = T.Error;
-  public type Env = T.Env;
-  public type Name = T.Name;
+  public type ValTag = T.Eval.ValTag;
+  public type Error = T.Eval.Error;
+  public type Env = T.Eval.Env;
+  public type Name = T.Eval.Name;
   public type Res = Result.Result<Val, Error>;
 
-  public func evalExp(actx: A.Context, env:Env, exp:Exp) : Res {
+  public func evalExp(actx: T.Adapton.Context, env:Env, exp:Exp) : Res {
     func eval(e:Exp) : Res = evalExp(actx, env, e);
     switch exp {
       case (#block(block)) { evalBlock(actx, env, block, #unit) };
@@ -122,7 +123,7 @@ module {
     }
   };
 
-  public func evalBlock(actx: A.Context, env:Env,
+  public func evalBlock(actx: T.Adapton.Context, env:Env,
                         block:Block, last:Val) : Res {
     switch block {
       case null { #ok(last) };
@@ -138,7 +139,7 @@ module {
     }
   };
 
-  public func evalArray(actx: A.Context, env:Env, exps:[Exp], expi:Nat, vals:Vals) : Res {
+  public func evalArray(actx: T.Adapton.Context, env:Env, exps:[Exp], expi:Nat, vals:Vals) : Res {
     if (expi >= exps.len()) {
       #ok(#array(List.toArray<Val>(List.rev<Val>(vals))))
     }
@@ -150,7 +151,7 @@ module {
     }
   };
 
-  public func evalList(actx: A.Context, env:Env,
+  public func evalList(actx: T.Adapton.Context, env:Env,
                        exps:Exps, vals:Vals) : Res {
     switch exps {
       case null { #ok(#list(List.rev<Val>(vals))) };
@@ -167,14 +168,14 @@ module {
     assert false; null
   };
 
-  public func getError(ge:T.GetError) : Error {
+  public func getError(ge:T.Adapton.GetError) : Error {
     { origin=?("eval.Adapton", null);
       message=("get error: " # "to do");
       data=#getError(ge)
     }
   };
 
-  public func putError(pe:T.PutError) : Error {
+  public func putError(pe:T.Adapton.PutError) : Error {
     { origin=?("eval.Adapton", null);
       message=("put error: " # "to do");
       data=#putError(pe)
@@ -202,11 +203,11 @@ module {
     }
   };
 
-  public func closure(_env:Env, _exp:Exp) : T.Closure {
+  public func closure(_env:Env, _exp:Exp) : T.Closure.Closure {
     {
       env=_env;
       exp=_exp;
-      eval=func (ac:A.Context) : Res { evalExp(ac, env, exp) };
+      eval=func (ac:T.Adapton.Context) : Res { evalExp(ac, env, exp) };
     }
   };
 
