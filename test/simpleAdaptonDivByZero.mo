@@ -5,25 +5,25 @@ import T "../src/types.mo";
 import E "../src/eval.mo";
 import A "../src/adapton.mo";
 
-// Same example (with pictures) from Adapton Rust docs, here:
-//
-//    https://docs.rs/adapton/0/adapton/#demand-driven-change-propagation
-//
+/*
+
+This file reproduces the intro example from the Adapton Rust docs,
+found here:
+
+    https://docs.rs/adapton/0/adapton/#demand-driven-change-propagation
+
+The DCG update behavior asserted here (see uses of
+`assertLogEventLast` below) matches the cleaning/dirtying behavior
+described in the link above, and in other documents and papers.
+
+In particular, the same example is used in a recorded adapton talk,
+from the http://adapton.org website.  The link above has slides with
+still pictures from the talk.
+
+*/
+
+.
 actor SimpleAdaptonDivByZero {
-
-  func assertOkPut(r:R.Result<A.NodeId, A.PutError>) : A.NodeId {
-    switch r {
-      case (#ok(id)) { id };
-      case _ { P.unreachable() };
-    }
-  };
-
-  func assertOkGet(r:R.Result<T.Result, A.GetError>) : T.Result {
-    switch r {
-      case (#ok(res)) { res };
-      case _ { P.unreachable() };
-    }
-  };
 
   public func go() {
     let ctx : A.Context = A.init();
@@ -188,6 +188,21 @@ actor SimpleAdaptonDivByZero {
                        ])
                 ])
             ]));
+  };
+
+
+  func assertOkPut(r:R.Result<A.NodeId, A.PutError>) : A.NodeId {
+    switch r {
+      case (#ok(id)) { id };
+      case _ { P.unreachable() };
+    }
+  };
+
+  func assertOkGet(r:R.Result<T.Result, A.GetError>) : T.Result {
+    switch r {
+      case (#ok(res)) { res };
+      case _ { P.unreachable() };
+    }
   };
 };
 
