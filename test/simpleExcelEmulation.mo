@@ -12,24 +12,26 @@ actor simpleExcelEmulation {
     let sheet : T.Eval.Exp =
       #sheet(
         #text("S"),
-        [ [ #nat(1),
-            #nat(2)
-          ],
-          [ #strictBinOp(#add,
+        [
+          [ // Row 0 has two cells named `S(0,0)` and `S(1,1)`:
+            #nat(1),  #nat(2) ],
+          [ // Row 1 has two cells: cell `S(1,0)` and ...
+            #strictBinOp(#add,
                          #cellOcc(0,0),
                          #cellOcc(0,1)),
-            /* Last cell defined here, at "S"(0,0): */
+            /* cell `S(1,1)`. */
             #strictBinOp(#mul,
                          #nat(2),
                          #cellOcc(1,0)) ]
         ]);
 
     let actx : T.Adapton.Context = A.init();
+
+    // Evaluate the sheet, including all of the cells:
     let sheetRes : T.Eval.Result =
       E.evalExp(actx, null, sheet);
 
-    // ---------------------------------------------------------------------------------
-    // We assert that the dependence graph has the correct shape for last cell:
+    // Assert that the dependence graph has the correct shape for last cell, S(1,1):
     A.assertLogEventLast(
       actx,
       #get(
