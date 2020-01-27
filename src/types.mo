@@ -131,6 +131,7 @@ public module Eval {
     #valueMismatch: (Val, ValTag);
     #getError: Adapton.GetError;
     #putError: Adapton.PutError;
+    #badCellOcc: (Name, Nat, Nat);
     #columnMiscount: (Nat, Nat, Nat); // (expected col count, first bad row, row's actual count)
   };
 
@@ -142,9 +143,44 @@ public module Eval {
     0
   };
 
+  public func envEq(env1:Env, env2:Env) : Bool {
+    switch (env1, env2) {
+      case (null, null) { true };
+      case (_, _) {
+             // to do
+             false
+           };
+    }
+  };
+
+  public func strictBinOpEq(b1:StrictBinOp, b2:StrictBinOp) : Bool {
+    switch (b1, b2) {
+    case (#add, #add) { true };
+    case (#mul, #mul) { true };
+    case (_, _) { /* to do */ false };
+    }
+  };
+
+  public func expEq(e1:Exp, e2:Exp) : Bool {
+    switch (e1, e2) {
+      case (#nat(n1), #nat(n2)) { n1 == n2 };
+      case (#force(e1), #force(e2)) { expEq(e1, e2) };
+      case (#thunk(e1), #thunk(e2)) { expEq(e1, e2) };
+      case (#get(e1), #get(e2)) { expEq(e1, e2) };
+      case (#thunkNode(n1), #thunkNode(n2)) { nameEq(n1.name, n2.name) };
+      case (#refNode(n1), #refNode(n2)) { nameEq(n1.name, n2.name) };
+      case (#strictBinOp(bop1, e11, e12), #strictBinOp(bop2, e21, e22)) {
+             strictBinOpEq(bop1, bop2) and expEq(e11, e21) and expEq(e12, e22)
+           };
+    }
+  };
+
   public func valEq(v1:Val, v2:Val) : Bool {
     switch (v1, v2) {
     case (#nat(n1), #nat(n2)) { n1 == n2 };
+    case (#thunk(env1, e1), #thunk(env2, e2)) {
+           envEq(env1, env2) and expEq(e1, e2)
+         };
     case (_, _) { P.nyi() };
     }
   };
@@ -195,10 +231,10 @@ public module Closure {
     // (only the Eval module creates these closures)
     eval: Adapton.Context -> Eval.Result;
   };
-  
+
   public func closureEq(c1:Closure, c2:Closure) : Bool {
     P.nyi()
-  }; 
+  };
 };
 
 // Types that represent Adapton state, and the demanded computation graph (DCG).
@@ -307,7 +343,7 @@ public module Adapton {
          };
     case (#get(n1, r1, es1), #get(n2, r2, es2)) {
            Eval.nameEq(n1, n2) and Eval.resultEq(r1, r2) and logEventsEq(es1, es2)
-         }; 
+         };
     case (#dirtyIncomingTo(n1, es1), #dirtyIncomingTo(n2, es2)) {
            Eval.nameEq(n1, n2) and logEventsEq(es1, es2)
          };
@@ -327,7 +363,7 @@ public module Adapton {
            false
          }
     }
-  
+
   };
 
 };
