@@ -48,8 +48,8 @@ actor SimpleAdaptonDivByZero {
                  E.closure(
                    null,
                    #strictBinOp(#div,
-                                #get(#ref(cell1)),
-                                #get(#ref(cell2))
+                                #get(#refNode(cell1)),
+                                #get(#refNode(cell2))
                    )))
     );
 
@@ -65,10 +65,10 @@ actor SimpleAdaptonDivByZero {
                  E.closure(
                    null,
                    #ifCond(#strictBinOp(#eq,
-                                        #get(#ref(cell2)),
+                                        #get(#refNode(cell2)),
                                         #nat(0)),
                            #nat(0),
-                           #get(#ref(cell3)))))
+                           #get(#refNode(cell3)))))
     );
 
     // demand division:
@@ -205,4 +205,4 @@ actor SimpleAdaptonDivByZero {
   };
 };
 
-//SimpleAdaptonDivByZero.go();
+SimpleAdaptonDivByZero.go();

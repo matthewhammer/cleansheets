@@ -17,14 +17,29 @@ public type OrdComp = {
 
 public type HashVal = Hash.Hash;
 
+public module Sheet {
+
+  // A sheet has a 2D grid of cells
+  public type Sheet = {
+    name: Eval.Name; // (name used for globally-unique Adapton resources)
+    grid: [[SheetCell]];
+  };
+
+  // A sheet cell holds an expression to eval, and the eval result
+  public type SheetCell = {
+    // Adapton ref cell we can mutate via `put`:
+    inputExp: Adapton.NodeId;
+    // Adapton incr thunk we can demand via `get`:
+    evalResult: Adapton.NodeId;
+  };
+};
+
 public module Eval {
 
   public type NodeId = Adapton.NodeId;
 
   // spreadsheet formula language:
   public type Exp = {
-    #ref: NodeId; // adapton ref node
-    #thunk: NodeId; // adapton thunk node
     #unit;
     #name: Name;
     #error: Error;
@@ -35,12 +50,18 @@ public module Eval {
     #bool: Bool;
     #list: List<Exp>;
     #array: [Exp];
+    #sheet: (Name, [[Exp]]);
+    #cellOcc: (Nat, Nat); // for now: cell occurrences use number-based coordinates
+    #force: Exp;
+    #thunk: Exp;
     #block: Block;
     #ifCond: (Exp, Exp, Exp);
     #strictBinOp: (StrictBinOp, Exp, Exp);
     #put: (Exp, Exp);
     #putThunk: (Exp, Exp);
     #get: Exp;
+    #refNode: NodeId; // adapton ref node
+    #thunkNode: NodeId; // adapton thunk node
   };
 
   public type Block =
@@ -71,10 +92,12 @@ public module Eval {
     #bool;
     #nat;
     #int;
+    #thunk;
     #list;
     #array;
-    #ref;
-    #thunk;
+    #sheet;
+    #refNode;
+    #thunkNode;
   };
 
   public type Val = {
@@ -86,9 +109,10 @@ public module Eval {
     #int: Int;
     #array: [Val];
     #list: List<Val>;
-    #grid: [[Val]];
-    #ref: NodeId; // adapton ref node
-    #thunk: NodeId; // adapton thunk node
+    #thunk: (Env, Exp);
+    #sheet: Sheet.Sheet;
+    #refNode: NodeId; // adapton ref node
+    #thunkNode: NodeId; // adapton thunk node
   };
 
   public type Name = {
@@ -107,6 +131,7 @@ public module Eval {
     #valueMismatch: (Val, ValTag);
     #getError: Adapton.GetError;
     #putError: Adapton.PutError;
+    #columnMiscount: (Nat, Nat, Nat); // (expected col count, first bad row, row's actual count)
   };
 
   // ---------------------- all type definitions above ----------------------
