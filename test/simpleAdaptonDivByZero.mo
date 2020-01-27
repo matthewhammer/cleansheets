@@ -22,7 +22,6 @@ still pictures from the talk.
 
 */
 
-.
 actor SimpleAdaptonDivByZero {
 
   public func go() {
