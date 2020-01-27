@@ -269,24 +269,22 @@ public func logEventEq (e1:LogEvent, e2:LogEvent) : Bool {
          P.nyi()
        };
   case (#get(n1, r1, es1), #get(n2, r2, es2)) {
-         P.nyi()
-
-       };
+         nameEq(n1, n2) and resultEq(r1, r2) and logEventsEq(es1, es2)
+       }; 
   case (#dirtyIncomingTo(n1, es1), #dirtyIncomingTo(n2, es2)) {
-         P.nyi()
-
+         nameEq(n1, n2) and logEventsEq(es1, es2)
        };
-  case (#cleanEdgeTo(n1, f1, es1), #cleanEdgeTo(n2, f2, es2)) {
-         P.nyi()
-
+  case (#dirtyEdgeFrom(n1, es1), #dirtyEdgeFrom(n2, es2)) {
+         nameEq(n1, n2) and logEventsEq(es1, es2)
+       };
+ case (#cleanEdgeTo(n1, f1, es1), #cleanEdgeTo(n2, f2, es2)) {
+         nameEq(n1, n2) and f1 == f2 and logEventsEq(es1, es2)
        };
   case (#cleanThunk(n1, f1, es1), #cleanThunk(n2, f2, es2)) {
-         P.nyi()
-
+         nameEq(n1, n2) and f1 == f2 and logEventsEq(es1, es2)
        };
   case (#evalThunk(n1, r1, es1), #evalThunk(n2, r2, es2)) {
-         P.nyi()
-
+         nameEq(n1, n2) and resultEq(r1, r2) and logEventsEq(es1, es2)
        };
   case (_, _) {
          false

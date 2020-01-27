@@ -74,116 +74,121 @@ actor SimpleAdaptonDivByZero {
 
     // demand division:
     let res1 = assertOkGet(A.get(ctx, cell4));
-    switch res1 {
-      case (#ok(#nat(21))) { };
-      case _ { assert false };
-    };
+    A.assertLogEventLast(ctx,
+      #get(#nat(4), #ok(#nat(21)),
+           [
+             #evalThunk(
+               #nat(4), #ok(#nat(21)),
+               [#get(#nat(2), #ok(#nat(2)), []),
+                #get(#nat(3), #ok(#nat(21)),
+                     [
+                       #evalThunk(
+                         #nat(3), #ok(#nat(21)),
+                         [
+                           #get(#nat(1), #ok(#nat(42)), []),
+                           #get(#nat(2), #ok(#nat(2)), [])
+                         ])
+                     ])
+               ])
+           ])
+    );
 
     // "cell 2 holds 0":
     ignore A.put(ctx, #nat(2), #nat(0));
+    A.assertLogEventLast
+    (ctx,
+     #put(#nat(2), #nat(0),
+          [
+            #dirtyIncomingTo(
+              #nat(2),
+              [
+                #dirtyEdgeFrom(
+                  #nat(3),
+                  [
+                    #dirtyIncomingTo(
+                      #nat(3),
+                      [
+                        #dirtyEdgeFrom(
+                          #nat(4),
+                          [
+                            #dirtyIncomingTo(#nat(4), [])
+                          ])
+                      ])
+                  ]),
+                #dirtyEdgeFrom(
+                  #nat(4),
+                  [
+                    #dirtyIncomingTo(
+                      #nat(4), [])
+                  ])
+              ])
+          ])
+    );
 
     // re-demand division:
     let res2 = assertOkGet(A.get(ctx, cell4));
-    switch res2 {
-      case (#ok(#nat(0))) { };
-      case _ { assert false };
-    };
+    A.assertLogEventLast
+    (ctx,
+     #get(#nat(4), #ok(#nat(0)),
+          [
+            #cleanThunk(
+              #nat(4), false,
+              [
+                #cleanEdgeTo(
+                  #nat(2), false, [])
+              ]),
+            #evalThunk(
+              #nat(4), #ok(#nat(0)),
+              [
+                #get(#nat(2), #ok(#nat(0)), [])
+              ])
+          ]));
 
     // "cell 2 holds 2":
     ignore A.put(ctx, #nat(2), #nat(2));
+    A.assertLogEventLast
+    (ctx,
+     #put(#nat(2), #nat(2),
+           [
+             #dirtyIncomingTo(
+               #nat(2),
+               [
+                 #dirtyEdgeFrom(
+                   #nat(4),
+                   [
+                     #dirtyIncomingTo(
+                       #nat(4), [])
+                   ])
+               ])
+           ]));
 
     // re-demand division:
     let res3 = assertOkGet(A.get(ctx, cell4));
-    switch res3 {
-      case (#ok(#nat(21))) { };
-      case _ { assert false };
-    };
-
-    // inspect the events
-    let events = A.getLogEvents(ctx);
-
-    // to do: compare with the correct events list, here:
-    let events2 = [
-      #put(#nat(1), #nat(42), []),
-      #put(#nat(2), #nat(2), []),
-      #putThunk(#nat(3), null, []),
-      #putThunk(#nat(4), null, []),
-      #get(#nat(4), #ok(#nat(21)),
-           [
-             #evalThunk(#nat(4), #ok(#nat(21)),
-                        [#get(#nat(2), #ok(#nat(2)), []),
-                         #get(#nat(3), #ok(#nat(21)),
-                              [
-                                #evalThunk(#nat(3), #ok(#nat(21)),
-                                           [
-                                             #get(#nat(1), #ok(#nat(42)), []),
-                                             #get(#nat(2), #ok(#nat(2)), [])
-                                           ])
-                              ])
-                        ])
-           ]),
-      #put(#nat(2), #nat(0),
-           [
-             #dirtyIncomingTo(#nat(2),
-                              [
-                                #dirtyEdgeFrom(#nat(3),
-                                               [
-                                                 #dirtyIncomingTo(#nat(3),
-                                                                  [
-                                                                    #dirtyEdgeFrom(#nat(4),
-                                                                                   [
-                                                                                     #dirtyIncomingTo(#nat(4), [])
-                                                                                   ])
-                                                                  ])
-                                               ]),
-                                #dirtyEdgeFrom(#nat(4),
-                                               [
-                                                 #dirtyIncomingTo(#nat(4), [])
-                                               ])
-                              ])
-           ]),
-      #get(#nat(4), #ok(#nat(0)),
-           [
-             #cleanThunk(#nat(4), false,
-                         [
-                           #cleanEdgeTo(#nat(2), false, [])
-                         ]),
-             #evalThunk(#nat(4), #ok(#nat(0)),
-                        [
-                          #get(#nat(2), #ok(#nat(0)), [])
-                        ])
-           ]),
-      #put(#nat(2), #nat(2),
-           [
-             #dirtyIncomingTo(#nat(2),
-                              [
-                                #dirtyEdgeFrom(#nat(4),
-                                               [
-                                                 #dirtyIncomingTo(#nat(4), [])
-                                               ])
-                              ])
-           ]),
-      #get(#nat(4), #ok(#nat(21)),
-           [
-             #cleanThunk(#nat(4), false,
-                         [
-                           #cleanEdgeTo(#nat(2), false, [])
-                         ]),
-             #evalThunk(#nat(4), #ok(#nat(21)),
-                        [
-                          #get(#nat(2), #ok(#nat(2)), []),
-                          #get(#nat(3), #ok(#nat(21)),
-                               [
-                                 #cleanThunk(#nat(3), true,
-                                             [
-                                               #cleanEdgeTo(#nat(1), true, []),
-                                               #cleanEdgeTo(#nat(2), true, [])
-                                             ])
-                               ])
-                        ])
-           ])
-    ];
+    A.assertLogEventLast
+      (ctx,
+       #get(#nat(4), #ok(#nat(21)),
+            [
+              #cleanThunk(
+                #nat(4), false,
+                [
+                  #cleanEdgeTo(#nat(2), false, [])
+                ]),
+              #evalThunk(
+                #nat(4), #ok(#nat(21)),
+                [
+                  #get(#nat(2), #ok(#nat(2)), []),
+                  #get(#nat(3), #ok(#nat(21)),
+                       [
+                         #cleanThunk(
+                           #nat(3), true,
+                           [
+                             #cleanEdgeTo(#nat(1), true, []),
+                             #cleanEdgeTo(#nat(2), true, [])
+                           ])
+                       ])
+                ])
+            ]));
   };
 };
 
-//SimpleAdaptonDivByZero.go();
+SimpleAdaptonDivByZero.go();
