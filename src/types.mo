@@ -2,7 +2,6 @@ import P "mo:stdlib/prelude.mo";
 import Buf "mo:stdlib/buf.mo";
 import Hash "mo:stdlib/hash.mo";
 import List "mo:stdlib/list.mo";
-import Result "mo:stdlib/result.mo";
 import H "mo:stdlib/hashMap.mo";
 import L "mo:stdlib/list.mo";
 
@@ -17,14 +16,29 @@ public type OrdComp = {
 
 public type HashVal = Hash.Hash;
 
+public module Sheet {
+
+  // A sheet has a 2D grid of cells
+  public type Sheet = {
+    name: Eval.Name; // (name used for globally-unique Adapton resources)
+    grid: [[SheetCell]];
+  };
+
+  // A sheet cell holds an expression to eval, and the eval result
+  public type SheetCell = {
+    // Adapton ref cell we can mutate via `put`:
+    inputExp: Adapton.NodeId;
+    // Adapton incr thunk we can demand via `get`:
+    evalResult: Adapton.NodeId;
+  };
+};
+
 public module Eval {
 
   public type NodeId = Adapton.NodeId;
 
   // spreadsheet formula language:
   public type Exp = {
-    #ref: NodeId; // adapton ref node
-    #thunk: NodeId; // adapton thunk node
     #unit;
     #name: Name;
     #error: Error;
@@ -35,12 +49,18 @@ public module Eval {
     #bool: Bool;
     #list: List<Exp>;
     #array: [Exp];
+    #sheet: (Name, [[Exp]]);
+    #cellOcc: (Nat, Nat); // for now: cell occurrences use number-based coordinates
+    #force: Exp;
+    #thunk: Exp;
     #block: Block;
     #ifCond: (Exp, Exp, Exp);
     #strictBinOp: (StrictBinOp, Exp, Exp);
     #put: (Exp, Exp);
     #putThunk: (Exp, Exp);
     #get: Exp;
+    #refNode: NodeId; // adapton ref node
+    #thunkNode: NodeId; // adapton thunk node
   };
 
   public type Block =
@@ -52,7 +72,9 @@ public module Eval {
     data: ErrorData;
   };
 
-  public type Result = Result.Result<Val, Error>;
+  // to do --
+  //  this matches standard library definition; copying to overcome cyclic def compiler error.
+  public type Result = {#ok:Val; #err:Error};
 
   // strict means left and right sides _always_ evaluated to values
   public type StrictBinOp = {
@@ -71,10 +93,12 @@ public module Eval {
     #bool;
     #nat;
     #int;
+    #thunk;
     #list;
     #array;
-    #ref;
-    #thunk;
+    #sheet;
+    #refNode;
+    #thunkNode;
   };
 
   public type Val = {
@@ -86,9 +110,10 @@ public module Eval {
     #int: Int;
     #array: [Val];
     #list: List<Val>;
-    #grid: [[Val]];
-    #ref: NodeId; // adapton ref node
-    #thunk: NodeId; // adapton thunk node
+    #thunk: (Env, Exp);
+    #sheet: Sheet.Sheet;
+    #refNode: NodeId; // adapton ref node
+    #thunkNode: NodeId; // adapton thunk node
   };
 
   public type Name = {
@@ -107,6 +132,8 @@ public module Eval {
     #valueMismatch: (Val, ValTag);
     #getError: Adapton.GetError;
     #putError: Adapton.PutError;
+    #badCellOcc: (Name, Nat, Nat);
+    #columnMiscount: (Nat, Nat, Nat); // (expected col count, first bad row, row's actual count)
   };
 
   // ---------------------- all type definitions above ----------------------
@@ -117,9 +144,45 @@ public module Eval {
     0
   };
 
+  public func envEq(env1:Env, env2:Env) : Bool {
+    switch (env1, env2) {
+      case (null, null) { true };
+      case (_, _) {
+             // to do
+             false
+           };
+    }
+  };
+
+  public func strictBinOpEq(b1:StrictBinOp, b2:StrictBinOp) : Bool {
+    switch (b1, b2) {
+    case (#add, #add) { true };
+    case (#mul, #mul) { true };
+    case (_, _) { /* to do */ false };
+    }
+  };
+
+  public func expEq(e1:Exp, e2:Exp) : Bool {
+    switch (e1, e2) {
+      case (#nat(n1), #nat(n2)) { n1 == n2 };
+      case (#force(e1), #force(e2)) { expEq(e1, e2) };
+      case (#thunk(e1), #thunk(e2)) { expEq(e1, e2) };
+      case (#get(e1), #get(e2)) { expEq(e1, e2) };
+      case (#thunkNode(n1), #thunkNode(n2)) { nameEq(n1.name, n2.name) };
+      case (#refNode(n1), #refNode(n2)) { nameEq(n1.name, n2.name) };
+      case (#strictBinOp(bop1, e11, e12), #strictBinOp(bop2, e21, e22)) {
+             strictBinOpEq(bop1, bop2) and expEq(e11, e21) and expEq(e12, e22)
+           };
+      case (_, _) { /* to do */ false };
+    }
+  };
+
   public func valEq(v1:Val, v2:Val) : Bool {
     switch (v1, v2) {
     case (#nat(n1), #nat(n2)) { n1 == n2 };
+    case (#thunk(env1, e1), #thunk(env2, e2)) {
+           envEq(env1, env2) and expEq(e1, e2)
+         };
     case (_, _) { P.nyi() };
     }
   };
@@ -170,10 +233,10 @@ public module Closure {
     // (only the Eval module creates these closures)
     eval: Adapton.Context -> Eval.Result;
   };
-  
+
   public func closureEq(c1:Closure, c2:Closure) : Bool {
     P.nyi()
-  }; 
+  };
 };
 
 // Types that represent Adapton state, and the demanded computation graph (DCG).
@@ -282,7 +345,7 @@ public module Adapton {
          };
     case (#get(n1, r1, es1), #get(n2, r2, es2)) {
            Eval.nameEq(n1, n2) and Eval.resultEq(r1, r2) and logEventsEq(es1, es2)
-         }; 
+         };
     case (#dirtyIncomingTo(n1, es1), #dirtyIncomingTo(n2, es2)) {
            Eval.nameEq(n1, n2) and logEventsEq(es1, es2)
          };
@@ -302,7 +365,7 @@ public module Adapton {
            false
          }
     }
-  
+
   };
 
 };
