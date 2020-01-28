@@ -2,13 +2,6 @@ import T "../src/types.mo";
 import A "../src/adapton.mo";
 import E "../src/eval.mo";
 
-/* To do in the future:
-
- - `evalLine` function uses caller ID to save per-caller environments and adapton contexts.
- - nice UI that looks like a Cloud-based data science notebook (e.g., https://jupyter.org/)
- - more complete features, and more end-to-end tests...
-*/
-
 actor {
   public type Env = T.Eval.Env;
   public type Name = T.Eval.Name;
@@ -29,3 +22,17 @@ actor {
     }
   };
 }
+
+/* To do in the future:
+
+ - Nice UI that looks like a Cloud-based data science notebook
+   (e.g., https://jupyter.org/), or the basic outlines of one.
+
+ - `eval` function uses caller ID to save
+   per-caller resources (environments and adapton contexts).
+
+ - more complete formula features, and more end-to-end tests...
+
+ - inter-canister dependencies and inter-canister updates.
+
+*/
