@@ -10,6 +10,7 @@ actor {
   var env : T.Eval.Env = null;
   var adaptonCtx : T.Adapton.Context = A.init();
 
+  // the `E` part of a Cloud-backed `REPL` for the CleanSheets lang.
   public func eval(n:?Name, exp:Exp) : async T.Eval.Result {
     let res = E.evalExp(adaptonCtx, env, exp);
     switch (res, n) {
