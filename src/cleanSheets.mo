@@ -17,7 +17,7 @@ actor {
   var env : T.Eval.Env = null;
   var adaptonCtx : T.Adapton.Context = A.init();
 
-  public func evalLine(n:?Name, exp:Exp) : async T.Eval.Result {
+  public func eval(n:?Name, exp:Exp) : async T.Eval.Result {
     let res = E.evalExp(adaptonCtx, env, exp);
     switch (res, n) {
     case (#err(e), _) { return #err(e) };
