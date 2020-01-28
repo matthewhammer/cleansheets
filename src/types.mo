@@ -2,7 +2,6 @@ import P "mo:stdlib/prelude.mo";
 import Buf "mo:stdlib/buf.mo";
 import Hash "mo:stdlib/hash.mo";
 import List "mo:stdlib/list.mo";
-import Result "mo:stdlib/result.mo";
 import H "mo:stdlib/hashMap.mo";
 import L "mo:stdlib/list.mo";
 
@@ -73,7 +72,9 @@ public module Eval {
     data: ErrorData;
   };
 
-  public type Result = Result.Result<Val, Error>;
+  // to do --
+  //  this matches standard library definition; copying to overcome cyclic def compiler error.
+  public type Result = {#ok:Val; #err:Error};
 
   // strict means left and right sides _always_ evaluated to values
   public type StrictBinOp = {
@@ -172,6 +173,7 @@ public module Eval {
       case (#strictBinOp(bop1, e11, e12), #strictBinOp(bop2, e21, e22)) {
              strictBinOpEq(bop1, bop2) and expEq(e11, e21) and expEq(e12, e22)
            };
+      case (_, _) { /* to do */ false };
     }
   };
 
