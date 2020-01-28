@@ -203,6 +203,7 @@ public module Eval {
 
   public func nameEq(n1:Name, n2:Name) : Bool {
     switch (n1, n2) {
+    case (#blob(b1), #blob(b2)) { b1 == b2 };
     case (#nat(n1), #nat(n2)) { n1 == n2 };
     case (#text(t1), #text(t2)) { t1 == t2 };
     case (#tagTup(tag1, tup1), #tagTup(tag2, tup2)) {
