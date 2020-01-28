@@ -13,7 +13,7 @@ actor simpleExcelEmulation {
       #sheet(
         #text("S"),
         [
-          [ // Row 0 has two cells named `S(0,0)` and `S(1,1)`:
+          [ // Row 0 has two cells named `S(0,0)` and `S(0,1)`:
             #nat(1),  #nat(2) ],
           [ // Row 1 has two cells: cell `S(1,0)` and ...
             #strictBinOp(#add,
