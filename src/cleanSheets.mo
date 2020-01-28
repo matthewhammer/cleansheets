@@ -11,17 +11,29 @@ actor {
   var adaptonCtx : T.Adapton.Context = A.init();
 
   // the `E` part of a Cloud-backed `REPL` for the CleanSheets lang.
-  public func eval(n:?Name, exp:Exp) : async T.Eval.Result {
+  public shared { caller = c }
+  func eval(n:?Name, exp:Exp)
+    : async T.Eval.Result
+  {
     let res = E.evalExp(adaptonCtx, env, exp);
     switch (res, n) {
-    case (#err(e), _) { return #err(e) };
-    case (#ok(v), null) { return #ok(v) };
-    case (#ok(v), ?n) {
-           env := ?((n, v), env);
-           #ok(v)
+    case (#err(err), _) { return #err(err) };
+    case (#ok(resVal), null) { return #ok(resVal) };
+    case (#ok(resVal), ?resName) {
+           // the environment collects all variables together,
+           // but each caller only shadows their own definitions:
+           let callerId : Blob = c;
+           let varName = #tagTup(resName, [#blob callerId]);
+           env := ?((varName, resVal), env);
+           #ok(resVal)
          };
     }
   };
+
+  // list the entire (public) environment
+  // (to do -- "private state" via faceted values, or something else)
+  public func getEnv() : async T.Eval.Env { env };
+
 }
 
 /* To do in the future:
@@ -33,6 +45,8 @@ actor {
    per-caller resources (environments and adapton contexts).
 
  - more complete formula features, and more end-to-end tests...
+
+ - some basic abstractions for privacy; e.g., "faceted values" would be nice.
 
  - inter-canister dependencies and inter-canister updates.
 

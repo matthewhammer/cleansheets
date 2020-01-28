@@ -117,6 +117,7 @@ public module Eval {
   };
 
   public type Name = {
+    #blob: Blob; // e.g., for caller ids
     #text: Text;
     #nat: Nat;
     #tagTup: (Name, [Name]);
