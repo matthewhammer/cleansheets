@@ -1,10 +1,10 @@
-import R "mo:stdlib/result.mo";
-import P "mo:stdlib/prelude.mo";
-import Debug "mo:stdlib/debug.mo";
+import R "mo:stdlib/result";
+import P "mo:stdlib/prelude";
+import Debug "mo:stdlib/debug";
 
-import T "../src/types.mo";
-import A "../src/adapton.mo";
-import E "../src/eval.mo";
+import T "../src/types";
+import A "../src/adapton";
+import E "../src/eval";
 
 actor simpleExcelEmulation {
 

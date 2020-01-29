@@ -1,9 +1,9 @@
-import P "mo:stdlib/prelude.mo";
-import Buf "mo:stdlib/buf.mo";
-import Hash "mo:stdlib/hash.mo";
-import List "mo:stdlib/list.mo";
-import H "mo:stdlib/hashMap.mo";
-import L "mo:stdlib/list.mo";
+import P "mo:stdlib/prelude";
+import Buf "mo:stdlib/buf";
+import Hash "mo:stdlib/hash";
+import List "mo:stdlib/list";
+import H "mo:stdlib/hashMap";
+import L "mo:stdlib/list";
 
 module {
 

@@ -1,6 +1,6 @@
-import T "../src/types.mo";
-import A "../src/adapton.mo";
-import E "../src/eval.mo";
+import T "../src/types";
+import A "../src/adapton";
+import E "../src/eval";
 
 actor {
   public type Env = T.Eval.Env;

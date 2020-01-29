@@ -11,14 +11,14 @@ Two closely-related papers:
 
 */
 
-import H "mo:stdlib/hashMap.mo";
-import Hash "mo:stdlib/hash.mo";
-import Buf "mo:stdlib/buf.mo";
-import L "mo:stdlib/list.mo";
-import R "mo:stdlib/result.mo";
-import P "mo:stdlib/prelude.mo";
+import H "mo:stdlib/hashMap";
+import Hash "mo:stdlib/hash";
+import Buf "mo:stdlib/buf";
+import L "mo:stdlib/list";
+import R "mo:stdlib/result";
+import P "mo:stdlib/prelude";
 
-import T "types.mo";
+import T "types";
 
 module {
 public type Val = T.Eval.Val;
