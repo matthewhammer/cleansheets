@@ -106,7 +106,7 @@ public func put(c:Context, n:Name, val:Val)
 public func putThunk(c:Context, n:Name, cl:Closure)
   : R.Result<NodeId, T.Adapton.PutError>
 {
-  let logSaved = beginLogEvent(c);
+  beginLogEvent(c);
   let newThunkNode : Thunk = {
     incoming=newEdgeBuf();
     outgoing=[];
@@ -132,7 +132,7 @@ public func putThunk(c:Context, n:Name, cl:Closure)
 };
 
 public func get(c:Context, n:NodeId) : R.Result<Result, GetError> {
-  let logSaved = beginLogEvent(c);
+  beginLogEvent(c);
   switch (c.store.get(n.name)) {
     case null { #err(()) /* error: dangling/forged name posing as live node id. */ };
     case (?#ref(refNode)) {
