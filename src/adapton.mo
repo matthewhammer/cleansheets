@@ -24,6 +24,7 @@ module {
 public type Val = T.Eval.Val;
 public type Exp = T.Eval.Exp;
 public type Error = T.Eval.Error;
+public type ErrorData = T.Eval.ErrorData;
 public type NodeId = T.Eval.NodeId;
 public type Name = T.Eval.Name;
 public type Closure = T.Closure.Closure;
@@ -368,11 +369,23 @@ func cleanThunk(c:Context, n:Name, t:Thunk) : Bool {
   true
 };
 
+public func cyclicDependency(s:Stack, n:Name) : Error {
+  let ed = (#cyclicDependency(s, n) : ErrorData);
+  { origin=?("adapton", null);
+    message=("cyclic dependency in DCG: ...");
+    data=ed;
+  }
+};
+
 func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
   beginLogEvent(c);
   let oldEdges = c.edges;
   let oldStack = c.stack;
   let oldAgent = c.agent;
+  // to do -- if nodeName exists on oldStack, then we have detected a cycle.
+  if (L.exists<Name>(oldStack, func (n:Name) : Bool { T.Eval.nameEq(n, nodeName) })) {
+    return #err(cyclicDependency(oldStack, nodeName))
+  };
   c.agent := #archivist;
   c.edges := Buf.Buf<Edge>(03);
   c.stack := ?(nodeName, oldStack);

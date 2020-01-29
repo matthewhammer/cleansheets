@@ -38,7 +38,9 @@ module {
        */
       if (body.len() == 0) {
         #ok(#sheet({name=sheetName;
-                    grid=[]}))
+                    grid=[];
+                    errors=Buf.Buf<Error>(03);
+                   }))
       } else {
         // check column counts:
         let columnCount = body[0].len();
@@ -77,10 +79,11 @@ module {
         };
         let gridArr = gridBuf.toArray();
         // Create the sheet data type from this grid, and "refresh" it for the first time.
-        // If there is a cycle, this step detects it and causes an error (or several) -- to do.
-        let sheet : Sheet = {
+        // If there is a cycle, this step detects it and causes an error (or several).
+        let sheet : Sheet = {          
           name=sheetName;
-          grid=gridArr
+          grid=gridArr;
+          errors=Buf.Buf<Error>(03);
         };
         refresh(actx, sheet)
       }
@@ -112,16 +115,18 @@ module {
     };
 
     public func refresh(actx: T.Adapton.Context, sheet: Sheet) : Res {
-      func refreshCell(i:Nat, j:Nat) : Result.Result<Res, A.PutError> {
+      func refreshCell(i:Nat, j:Nat) : Result.Result<Res, A.GetError> {
         A.get(actx, sheet.grid[i][j].evalResult)
       };
       // demand the evaluated result of each grid cell, and
       // collect possible errors, including errors about cyclic dependencies.
+      sheet.errors.clear();
       for (i in sheet.grid.keys()) {
         for (j in sheet.grid[i].keys()) {
           switch (refreshCell(i, j)) {
-          case (#ok(res)) { };
-          case (#err(e)) { /* todo -- save error in the sheet's error buffer; */ P.unreachable() }
+          case (#ok(#err(evalErr))) { sheet.errors.add(evalErr) };
+          case (#ok(#ok(_))) { };
+          case (#err(e)) { P.unreachable() }
           }
         };
       };
