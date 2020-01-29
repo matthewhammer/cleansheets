@@ -1,7 +1,7 @@
 {
     "canisters": {
         "cleanSheets": {
-            "main": "src/cleanSheets.mo"
+            "main": "test/simpleExcelEmulation.mo"
         }
     },
     "defaults": {

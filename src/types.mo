@@ -41,6 +41,7 @@ public module Eval {
     #list: List<Exp>;
     #array: [Exp];
     #sheet: (Name, [[Exp]]);
+    #sheetUpdate: (Exp, Exp, Exp, Exp); // update sheet at 2D coord with new expression
     #cellOcc: (Nat, Nat); // for now: cell occurrences use number-based coordinates
     #force: Exp;
     #thunk: Exp;

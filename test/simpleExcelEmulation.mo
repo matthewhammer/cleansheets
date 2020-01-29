@@ -1,5 +1,6 @@
 import R "mo:stdlib/result.mo";
 import P "mo:stdlib/prelude.mo";
+import Debug "mo:stdlib/debug.mo";
 
 import T "../src/types.mo";
 import A "../src/adapton.mo";
@@ -9,49 +10,64 @@ actor simpleExcelEmulation {
 
   public func go() {
 
-    let sheet : T.Eval.Exp =
+    let sheetExp : T.Eval.Exp =
       #sheet(
         #text("S"),
         [
-          [ // Row 0 has two cells named `S(0,0)` and `S(0,1)`:
-            #nat(1),  #nat(2) ],
-          [ // Row 1 has two cells: cell `S(1,0)` and ...
-            #strictBinOp(#add,
+          [ #nat(1),  #nat(2) ],
+          [ #strictBinOp(#add,
                          #cellOcc(0,0),
                          #cellOcc(0,1)),
-            /* cell `S(1,1)`. */
             #strictBinOp(#mul,
                          #nat(2),
                          #cellOcc(1,0)) ]
         ]);
 
+    // Adapton maintains our dependence graph
     let actx : T.Adapton.Context = A.init();
 
-    // Evaluate the sheet, including all of the cells:
-    let sheetRes : T.Eval.Result =
-      E.evalExp(actx, null, sheet);
+    // create the initial Sheet datatype from the DSL expression above
+    let s : T.Sheet.Sheet = {
+      switch (E.evalExp(actx, null, sheetExp)) {
+      case (#ok(#sheet(s))) s;
+      case _ { P.unreachable() };
+      }};
 
-    // Assert that the dependence graph has the correct shape for last cell, S(1,1):
+    // Demand that the sheet's results are fully refreshed
+    ignore E.Sheet.refresh(actx, s);
+    ignore E.Sheet.refresh(actx, s);
     A.assertLogEventLast(
       actx,
-      #get(
-        #tagTup(#text("S"), [#nat(1), #nat(1), #text("out")]),
-        #ok(#nat(6)),
-        [
-          #evalThunk(
-            #tagTup(#text("S"), [#nat(1), #nat(1), #text("out")]),
-            #ok(#nat(6)),
-            [
-              #get(#tagTup(#text("S"), [#nat(1), #nat(1), #text("inp")]),
-                   #ok(#thunk(null,
-                              #strictBinOp(#mul, #nat(2),
-                                           #get(#thunkNode({name = #tagTup(#text("S"), [#nat(1), #nat(0), #text("out")])}))))), []),
-              #get(#tagTup(#text("S"), [#nat(1), #nat(0), #text("out")]),
-                   #ok(#nat(3)), [])])])
+      #get(#tagTup(#text("S"), [#nat(1), #nat(1), #text("out")]), #ok(#nat(6)), [])
     );
+
+    // Update the sheet, creating a cycle:
+    ignore E.Sheet.update(actx, s, 0, 0,
+                          #strictBinOp(#add, #nat(666), #cellOcc(0,1)));
+
+    // Demand that the sheet's results are fully refreshed
+    ignore E.Sheet.refresh(actx, s);
+    ignore E.Sheet.refresh(actx, s);
+    A.assertLogEventLast(
+      actx,
+      #get(#tagTup(#text("S"), [#nat(1), #nat(1), #text("out")]), #ok(#nat(1_340)), [])
+    );
+
+/*
     // todo:
-    //  - change sheet (API for this?)
-    //  - re-assert new values and correct dirty/clean behavior.
+    //  - assert that the results are correct
+
+    // Update the sheet, creating a cycle:
+    ignore E.Sheet.update(actx, s, 0, 0,
+                          #strictBinOp(#add, #nat(666), #cellOcc(0,0)));
+
+    // Demand that the sheet's results are fully refreshed
+    ignore E.Sheet.refresh(actx, s);
+
+    // todo:
+    //  - assert that cycle is detected.
+    //  - update and remove cycle; assert that the results are computed again
+*/
   };
 };
 
