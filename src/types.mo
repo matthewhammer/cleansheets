@@ -13,6 +13,7 @@ public module Sheet {
   public type Sheet = {
     name: Eval.Name; // (name used for globally-unique Adapton resources)
     grid: [[SheetCell]];
+    errors: Buf.Buf<Eval.Error>;
   };
 
   // A sheet cell holds an expression to eval, and the eval result
@@ -41,6 +42,7 @@ public module Eval {
     #list: List<Exp>;
     #array: [Exp];
     #sheet: (Name, [[Exp]]);
+    #sheetUpdate: (Exp, Exp, Exp, Exp); // update sheet at 2D coord with new expression
     #cellOcc: (Nat, Nat); // for now: cell occurrences use number-based coordinates
     #force: Exp;
     #thunk: Exp;
@@ -118,6 +120,7 @@ public module Eval {
   public type Env = List<(Name, Val)>;
 
   public type ErrorData = {
+    #cyclicDependency: (Adapton.Stack, Name);
     #varNotFound: (Env, Name);
     #missingFeature: Text;
     #valueMismatch: (Val, ValTag);
