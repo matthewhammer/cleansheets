@@ -7,15 +7,6 @@ import L "mo:stdlib/list.mo";
 
 module {
 
-// to do: move to stdlib:
-public type OrdComp = {
-  #lessThan;
-  #equalTo;
-  #greaterThan
-};
-
-public type HashVal = Hash.Hash;
-
 public module Sheet {
 
   // A sheet has a 2D grid of cells
@@ -135,6 +126,8 @@ public module Eval {
     #badCellOcc: (Name, Nat, Nat);
     #columnMiscount: (Nat, Nat, Nat); // (expected col count, first bad row, row's actual count)
   };
+
+  public type HashVal = Hash.Hash;
 
   // ---------------------- all type definitions above ----------------------
   // ---------------------- all function definitions below ------------------
