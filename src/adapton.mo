@@ -120,8 +120,6 @@ public func putThunk(c:Context, n:Name, cl:Closure)
          if (T.Closure.closureEq(oldThunk.closure, cl)) {
            // matching closures ==> no dirtying.
          } else {
-           // to do: if the node exists and the name is currently on the stack,
-           //   then the thunk-stack is cyclic; signal an error.
            dirtyThunk(c, n, oldThunk)
          }
        };
@@ -219,7 +217,7 @@ func remBackEdge(c:Context, edge:Edge) {
          let nodeIncoming = incomingEdgeBuf(node);
          let newIncoming : EdgeBuf = Buf.Buf<Edge>(03);
          for (incomingEdge in nodeIncoming.iter()) {
-           if (T.Eval.nameEq(edge.dependent.name, 
+           if (T.Eval.nameEq(edge.dependent.name,
                              incomingEdge.dependent.name)) {
              // same source, so filter otherEdge out.
              // (we do not bother comparing actions; it's not required.)
@@ -276,7 +274,16 @@ func dirtyThunk(c:Context, n:Name, thunkNode:Thunk) {
   // to do: if the node is on the stack,
   //   then the DCG is overwriting names
   //   too often for change propagation to follow soundly; signal an error.
+  //
+  // to do: if we carry the "original put name" with our dirty
+  //   traversals, we can report about the overused name that causes this error,
+  //   and its detection here (usually non-locally within the DCG, at another name, always of a thunk).
   beginLogEvent(c);
+  if (stackContainsNodeName(c.stack, n)) {
+    // to do: the node to dirty is currently running; the program is overusing a name
+    // #err(#archivistNameOveruse(c.stack, n))
+    assert false
+  };
   for (edge in thunkNode.incoming.iter()) {
     dirtyEdge(c, edge)
   };
@@ -377,13 +384,17 @@ public func cyclicDependency(s:Stack, n:Name) : Error {
   }
 };
 
+func stackContainsNodeName(s:Stack, nodeName:Name) : Bool {
+  L.exists<Name>(s, func (n:Name) : Bool { T.Eval.nameEq(n, nodeName) })
+};
+
 func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
   beginLogEvent(c);
   let oldEdges = c.edges;
   let oldStack = c.stack;
   let oldAgent = c.agent;
-  // to do -- if nodeName exists on oldStack, then we have detected a cycle.
-  if (L.exists<Name>(oldStack, func (n:Name) : Bool { T.Eval.nameEq(n, nodeName) })) {
+  // if nodeName exists on oldStack, then we have detected a cycle.
+  if (stackContainsNodeName(oldStack, nodeName)) {
     return #err(cyclicDependency(oldStack, nodeName))
   };
   c.agent := #archivist;
