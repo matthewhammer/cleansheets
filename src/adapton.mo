@@ -11,16 +11,22 @@ The algorithms in this module are only used by Adapton, not
 externally.  They permit the main API (put, putThunk, get) to dirty
 and clean edges while enforcing certain invariants, given below.
 
-### Definitions:
+### Graph definitions:
+
+- Each node is either a ref node or a thunk node.
+
+- Each edge is directed and arises from a thunk node;
+  its target can either be a thunk node or a ref node.
 
 - An edge is either dirty or clean.
 
-- A thunk is dirty if and only if it has at least one outgoing dirty edge.
+- A thunk node is dirty if and only if it has at least one outgoing dirty edge.
 
-- refs are never themselves dirty, but their dependent (incoming) edges
-  can _each_ be dirty or clean; one at least one is dirty, it
-  encodes the situation when the ref changes to a "new" value (distinct
-  from at least _some_ past recorded action on this dirty edge).
+- Ref nodes are never themselves dirty, but their dependent (incoming)
+  edges can _each_ be dirty or clean.  When at least one such edge is
+  dirty for a ref node, we have encoded a situation where the ref node
+  changes to a "new" value, distinct from at least _some_ past recorded
+  action on this dirty edge.
 
 ### Clean/dirty invariant
 
