@@ -50,7 +50,7 @@ respectively.
 
 ### Further discussion
 
-- All node identities determined user-provided names
+- All node identities used here are determined by explicit, user-provided names.
 
 - Nominal Adapton (here) supports "classic Adapton" by choosing names
   structurally, as "full hashes"; we do not yet directly support that
