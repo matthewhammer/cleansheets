@@ -57,9 +57,6 @@ respectively.
 
 */
 
-
-*/
-
 import H "mo:stdlib/hashMap";
 import Hash "mo:stdlib/hash";
 import Buf "mo:stdlib/buf";
