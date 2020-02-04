@@ -17,9 +17,10 @@ and clean edges while enforcing certain invariants, given below.
 
 - A thunk is dirty if and only if it has at least one outgoing dirty edge.
 
-- refs are never themselves dirty, but their dependent edges can be dirty,
-  encoding the situation when the ref changes to a new value (distinct
-  from at least some past action on this dirty edge).
+- refs are never themselves dirty, but their dependent (incoming) edges
+  can _each_ be dirty or clean; one at least one is dirty, it
+  encodes the situation when the ref changes to a "new" value (distinct
+  from at least _some_ past recorded action on this dirty edge).
 
 ### Clean/dirty invariant
 
@@ -34,7 +35,7 @@ status of the entire graph:
  - If an edge `E` is clean, then all of its dependencies
    ("down-demand-dep"/outgoing) edges are also clean:
 
-   `for all E2 in downFrom(E), isDirty(E2)`
+   `for all E2 in downFrom(E), not(isDirty(E2))`
 
 The sets of edges `upFrom(E)` and `downFrom(E)` used above denote the
 transitive closure of edges that forms by following the dependent
