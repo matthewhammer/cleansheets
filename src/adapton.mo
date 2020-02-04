@@ -1,24 +1,70 @@
-/*
-Nominal Adapton implementation in Motoko, specialized for CleanSheets lang.
+/** Adapton in Motoko, specialized for CleanSheets lang.
 
-All node identities determined user-provided names; Note: Nominal
-Adapton (here) supports "classic Adapton" by choosing names
-structurally, as "full hashes"; we do not support that here, yet.
+This module defines a general-purpose cache and dependence graph
+system.  We use it here for CleanSheets.  This Motoko code does not
+depend heavily on CleanSheets, however, and can be adapted for other
+purposes; it follows an established (published) algorithm.
 
-Two closely-related papers:
- 1. [Incremental Computation with Names](https://arxiv.org/abs/1503.07792)
- 2. [Adapton: composable, demand-driven incremental computation](https://dl.acm.org/doi/abs/10.1145/2666356.2594324)
+## Cleaning and dirtying algorithms
+
+The algorithms in this module are only used by Adapton, not
+externally.  They permit the main API (put, putThunk, get) to dirty
+and clean edges while enforcing certain invariants, given below.
+
+### Definitions:
+
+- An edge is either dirty or clean.
+
+- A thunk is dirty if and only if it has at least one outgoing dirty edge.
+
+- refs are never themselves dirty, but their dependent edges can be dirty,
+  encoding the situation when the ref changes to a new value (distinct
+  from at least some past action on this dirty edge).
+
+### Clean/dirty invariant
+
+The clean/dirty invariant for each edge is a global one, over the
+status of the entire graph:
+
+ - If an edge `E` is dirty, then all its dependent
+   ("up-demand-dep"/incoming) edges are also dirty:
+
+   `for all E2 in upFrom(E), isDirty(E2)`
+
+ - If an edge `E` is clean, then all of its dependencies
+   ("down-demand-dep"/outgoing) edges are also clean:
+
+   `for all E2 in downFrom(E), isDirty(E2)`
+
+The sets of edges `upFrom(E)` and `downFrom(E)` used above denote the
+transitive closure of edges that forms by following the dependent
+direction of each edge, or dependency direction of each edge,
+respectively.
+
+### Further discussion
+
+- All node identities determined user-provided names
+
+- Nominal Adapton (here) supports "classic Adapton" by choosing names
+  structurally, as "full hashes"; we do not yet directly support that
+  usage here, but it could be easily added later as another feature.
+
+- This code is based on these two Adapton papers:
+
+  1. [Incremental Computation with Names](https://arxiv.org/abs/1503.07792)
+
+  2. [Adapton: composable, demand-driven incremental computation](https://dl.acm.org/doi/abs/10.1145/2666356.2594324)
 
 */
 
-import H "mo:stdlib/hashMap.mo";
-import Hash "mo:stdlib/hash.mo";
-import Buf "mo:stdlib/buf.mo";
-import L "mo:stdlib/list.mo";
-import R "mo:stdlib/result.mo";
-import P "mo:stdlib/prelude.mo";
+import H "mo:stdlib/hashMap";
+import Hash "mo:stdlib/hash";
+import Buf "mo:stdlib/buf";
+import L "mo:stdlib/list";
+import R "mo:stdlib/result";
+import P "mo:stdlib/prelude";
 
-import T "types.mo";
+import T "types";
 
 module {
 public type Val = T.Eval.Val;
@@ -120,8 +166,6 @@ public func putThunk(c:Context, n:Name, cl:Closure)
          if (T.Closure.closureEq(oldThunk.closure, cl)) {
            // matching closures ==> no dirtying.
          } else {
-           // to do: if the node exists and the name is currently on the stack,
-           //   then the thunk-stack is cyclic; signal an error.
            dirtyThunk(c, n, oldThunk)
          }
        };
@@ -219,7 +263,7 @@ func remBackEdge(c:Context, edge:Edge) {
          let nodeIncoming = incomingEdgeBuf(node);
          let newIncoming : EdgeBuf = Buf.Buf<Edge>(03);
          for (incomingEdge in nodeIncoming.iter()) {
-           if (T.Eval.nameEq(edge.dependent.name, 
+           if (T.Eval.nameEq(edge.dependent.name,
                              incomingEdge.dependent.name)) {
              // same source, so filter otherEdge out.
              // (we do not bother comparing actions; it's not required.)
@@ -276,7 +320,16 @@ func dirtyThunk(c:Context, n:Name, thunkNode:Thunk) {
   // to do: if the node is on the stack,
   //   then the DCG is overwriting names
   //   too often for change propagation to follow soundly; signal an error.
+  //
+  // to do: if we carry the "original put name" with our dirty
+  //   traversals, we can report about the overused name that causes this error,
+  //   and its detection here (usually non-locally within the DCG, at another name, always of a thunk).
   beginLogEvent(c);
+  if (stackContainsNodeName(c.stack, n)) {
+    // to do: the node to dirty is currently running; the program is overusing a name
+    // #err(#archivistNameOveruse(c.stack, n))
+    assert false
+  };
   for (edge in thunkNode.incoming.iter()) {
     dirtyEdge(c, edge)
   };
@@ -377,13 +430,17 @@ public func cyclicDependency(s:Stack, n:Name) : Error {
   }
 };
 
+func stackContainsNodeName(s:Stack, nodeName:Name) : Bool {
+  L.exists<Name>(s, func (n:Name) : Bool { T.Eval.nameEq(n, nodeName) })
+};
+
 func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
   beginLogEvent(c);
   let oldEdges = c.edges;
   let oldStack = c.stack;
   let oldAgent = c.agent;
-  // to do -- if nodeName exists on oldStack, then we have detected a cycle.
-  if (L.exists<Name>(oldStack, func (n:Name) : Bool { T.Eval.nameEq(n, nodeName) })) {
+  // if nodeName exists on oldStack, then we have detected a cycle.
+  if (stackContainsNodeName(oldStack, nodeName)) {
     return #err(cyclicDependency(oldStack, nodeName))
   };
   c.agent := #archivist;

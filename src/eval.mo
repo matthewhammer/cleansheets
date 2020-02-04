@@ -1,11 +1,11 @@
-import T "types.mo";
-import A "adapton.mo";
+import T "types";
+import A "adapton";
 
-import Array "mo:stdlib/list.mo";
-import List "mo:stdlib/list.mo";
-import Result "mo:stdlib/result.mo";
-import Buf "mo:stdlib/buf.mo";
-import P "mo:stdlib/prelude.mo";
+import Array "mo:stdlib/list";
+import List "mo:stdlib/list";
+import Result "mo:stdlib/result";
+import Buf "mo:stdlib/buf";
+import P "mo:stdlib/prelude";
 
 module {
   public type Exp = T.Eval.Exp;
