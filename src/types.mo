@@ -314,6 +314,7 @@ public module Adapton {
     var stack: Stack;
     var store: Store;
     // logging for debugging; not essential for other state:
+    var logFlag: Bool;
     var logBuf: LogEventBuf;
     var logStack: LogBufStack;
   };

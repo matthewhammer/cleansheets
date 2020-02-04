@@ -25,7 +25,7 @@ still pictures from the talk.
 actor SimpleAdaptonDivByZero {
 
   public func go() {
-    let ctx : T.Adapton.Context = A.init();
+    let ctx : T.Adapton.Context = A.init(true);
 
     // "cell 1 holds 42":
     let cell1 : T.Adapton.NodeId = assertOkPut(A.put(ctx, #nat(1), #nat(42)));
@@ -205,4 +205,4 @@ actor SimpleAdaptonDivByZero {
   };
 };
 
-SimpleAdaptonDivByZero.go();
+//SimpleAdaptonDivByZero.go();

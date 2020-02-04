@@ -101,7 +101,7 @@ public type LogEventTag = T.Adapton.LogEventTag;
 public type LogEventBuf = T.Adapton.LogEventBuf;
 public type LogBufStack = T.Adapton.LogBufStack;
 
-public func init() : Context {
+public func init(_logFlag:Bool) : Context {
   // to do -- compiler bug? -- IR typing issue when this line is inlined to its use below:
   let a : {#editor;#archivist} = (#editor : {#editor;#archivist});
   { var store : Store = H.HashMap<Name, Node>(03, T.Eval.nameEq, T.Eval.nameHash);
@@ -110,6 +110,7 @@ public func init() : Context {
     var agent = a;
     var logBuf : LogEventBuf = Buf.Buf<T.Adapton.LogEvent>(03);
     var logStack : LogBufStack = null;
+    var logFlag = _logFlag;
   }
 };
 
@@ -124,9 +125,9 @@ public func getLogEvents(c:Context) : [LogEvent] {
 
 // assert last log event
 public func assertLogEventLast(c:Context, expected:LogEvent) {
-  let items = c.logBuf.toArray();
-  if (items.len() > 0) {
-    let actual = items[items.len() - 1];
+  let logLen = c.logBuf.len();
+  if (logLen > 0) {
+    let actual = c.logBuf.get(logLen - 1);
     assert T.Adapton.logEventEq(actual, expected)
   } else { // no log event
     assert false
@@ -472,8 +473,10 @@ func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
 };
 
 func beginLogEvent(c:Context) {
-  c.logStack := ?(c.logBuf, c.logStack);
-  c.logBuf := Buf.Buf<LogEvent>(03);
+  if (c.logFlag) {
+    c.logStack := ?(c.logBuf, c.logStack);
+    c.logBuf := Buf.Buf<LogEvent>(03);
+  }
 };
 
 func logEvent(tag:LogEventTag, events:[LogEvent]) : LogEvent {
@@ -492,7 +495,8 @@ func logEvent(tag:LogEventTag, events:[LogEvent]) : LogEvent {
 func endLogEvent(c:Context,
                  tag:LogEventTag)
 {
-  switch (c.logStack) {
+  if (c.logFlag) {
+    switch (c.logStack) {
     case null { assert false };
     case (?(prevLogBuf, logStack)) {
            let events = c.logBuf.toArray();
@@ -501,6 +505,7 @@ func endLogEvent(c:Context,
            c.logBuf := prevLogBuf;
            c.logBuf.add(ev);
          }
+    }
   }
 };
 

@@ -24,7 +24,7 @@ actor simpleExcelEmulation {
         ]);
 
     // Adapton maintains our dependence graph
-    let actx : T.Adapton.Context = A.init();
+    let actx : T.Adapton.Context = A.init(true);
 
     // create the initial Sheet datatype from the DSL expression above
     let s : T.Sheet.Sheet = {
