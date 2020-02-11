@@ -1,10 +1,16 @@
 {
     "canisters": {
         "cleanSheetsExcelTest": {
-            "main": "test/simpleExcelEmulation.mo"
-        },
+            "main": "test/simpleExcelEmulation.mo",
+            "frontend": {
+        	"entrypoint": "web/index.js"
+            }
+	},
         "cleanSheetsAdaptonTest": {
-            "main": "test/simpleAdaptonDivByZero.mo"
+            "main": "test/simpleAdaptonDivByZero.mo",
+            "frontend": {
+                "entrypoint": "web/index.js"
+            }
         }
     },
     "defaults": {
