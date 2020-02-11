@@ -22,6 +22,30 @@ actor {
     res
   };
 
+  public func put(n:Name, e:Exp) : async Result {
+    let res = E.evalExp(adaptonCtx, env, #put(#name(n), e));
+    // re-use the name n, updating the environment on success:
+    env := { switch (res) {
+             case (#ok(val)) { ?((n, val), env) };
+             case (_) { env };
+             }};
+    res
+  };
+
+  public func putThunk(n:Name, e:Exp) : async Result {
+    let res = E.evalExp(adaptonCtx, env, #putThunk(#name(n), e));
+    // re-use the name n, updating the environment on success:
+    env := { switch (res) {
+             case (#ok(val)) { ?((n, val), env) };
+             case (_) { env };
+             }};
+    res
+  };
+
+  public func get(e:Exp) : async Result {
+    E.evalExp(adaptonCtx, env, #get(e))
+  };
+
   public func getLastLogEvent() : async ?T.Adapton.LogEvent {
     A.getLogEventLast(adaptonCtx)
   };

@@ -164,7 +164,7 @@ public module Eval {
       case (#strictBinOp(bop1, e11, e12), #strictBinOp(bop2, e21, e22)) {
              strictBinOpEq(bop1, bop2) and expEq(e11, e21) and expEq(e12, e22)
            };
-      case (_, _) { /* to do */ false };
+      case (_, _) { P.nyi() };
     }
   };
 
@@ -221,7 +221,8 @@ public module Closure {
   };
 
   public func closureEq(c1:Closure, c2:Closure) : Bool {
-    P.nyi()
+    Eval.envEq(c1.env, c2.env)
+    and Eval.expEq(c1.exp, c2.exp)
   };
 };
 
