@@ -39,14 +39,14 @@ module {
       if (body.len() == 0) {
         #ok(#sheet({name=sheetName;
                     grid=[];
-                    errors=Buf.Buf<Error>(03);
+                    errors=[];
                    }))
       } else {
         // check column counts:
         let columnCount = body[0].len();
         for (rowi in body.keys()) {
           if (body[rowi].len() == columnCount) { /* ok */ } else {
-            return #err(columnMiscount(columnCount, rowi, body[rowi].len()))
+            return #err(#columnMiscount(columnCount, rowi, body[rowi].len()))
           }
         };
         // established invariant: the input grid has uniform column count;
@@ -60,13 +60,13 @@ module {
             let cellExp : Exp = resolveCellOcc(sheetName, body.len(), row.len(), row[coli]);
             let cellThunk = #thunk(env, cellExp);
             let refNode : A.NodeId = switch (A.put(actx, inpName, cellThunk)) {
-            case (#err(e)) { return #err(putError(e)) };
+            case (#err(e)) { return #err(#putError(e)) };
             case (#ok(i)) { i };
             };
             let thunkNode : A.NodeId = switch (
               A.putThunk(actx, outName, closure(env, #force(#get(#refNode(refNode)))))
             ) {
-            case (#err(e)) { return #err(putError(e)) };
+            case (#err(e)) { return #err(#putError(e)) };
             case (#ok(i)) { i };
             };
             let sheetCell : T.Sheet.SheetCell = {
@@ -80,10 +80,10 @@ module {
         let gridArr = gridBuf.toArray();
         // Create the sheet data type from this grid, and "refresh" it for the first time.
         // If there is a cycle, this step detects it and causes an error (or several).
-        let sheet : Sheet = {          
+        let sheet : Sheet = {
           name=sheetName;
           grid=gridArr;
-          errors=Buf.Buf<Error>(03);
+          errors=[];
         };
         refresh(actx, sheet)
       }
@@ -103,7 +103,7 @@ module {
       let (numRows, numCols) = numRowsCols(sheet);
       let resolvedExp = resolveCellOcc(sheet.name, numRows, numCols, newInputExp);
       switch (A.put(actx, inpName, #thunk(null, resolvedExp))) {
-      case (#err(e)) { #err(putError(e)) };
+      case (#err(e)) { #err(#putError(e)) };
       case (#ok(_)) { #ok(#unit) };
       }
     };
@@ -120,17 +120,23 @@ module {
       };
       // demand the evaluated result of each grid cell, and
       // collect possible errors, including errors about cyclic dependencies.
-      sheet.errors.clear();
+      let errorBuf = Buf.Buf<Error>(03);
       for (i in sheet.grid.keys()) {
         for (j in sheet.grid[i].keys()) {
           switch (refreshCell(i, j)) {
-          case (#ok(#err(evalErr))) { sheet.errors.add(evalErr) };
+          case (#ok(#err(evalErr))) { errorBuf.add(evalErr) };
           case (#ok(#ok(_))) { };
           case (#err(e)) { P.unreachable() }
           }
         };
       };
-      #ok(#sheet(sheet))
+      // gather errors to form final sheet value
+      let sheet2 = {
+        name = sheet.name;
+        grid = sheet.grid;
+        errors = errorBuf.toArray();
+      };
+      #ok(#sheet(sheet2))
     };
 
     // replace each #cellOcc with the node name of its corresponding Adapton resource
@@ -146,9 +152,7 @@ module {
                let n = #tagTup(sheetName,[#nat(x), #nat(y), #text("out")]);
                #get(#thunkNode({name=n}))
              } else {
-               #error({origin=?("eval", ?("sheet", null));
-                       message= "cellOcc is out of bounds";
-                       data=#badCellOcc(sheetName,x,y)})
+               #error(#badCellOcc(sheetName,x,y))
              }
            };
       case (#strictBinOp(bop, e1, e2)) {
@@ -180,13 +184,13 @@ module {
                               case (#ok(#nat(col))) {
                                      Sheet.update(actx, sheet, row, col, newExp)
                                    };
-                              case (#ok(v)) { #err(valueMismatch(v, #nat)) };
+                              case (#ok(v)) { #err(#valueMismatch(v, #nat)) };
                               }
                             };
-                       case (#ok(v)) { #err(valueMismatch(v, #nat)) };
+                       case (#ok(v)) { #err(#valueMismatch(v, #nat)) };
                        }
                      };
-                case (#ok(v)) { #err(valueMismatch(v, #sheet)) };
+                case (#ok(v)) { #err(#valueMismatch(v, #sheet)) };
               }
             };
       case (#block(block)) { evalBlock(actx, env, block, #unit) };
@@ -195,7 +199,7 @@ module {
       case (#error(e)) { #err(e) };
       case (#varocc(x)) {
         switch (envGet(env, x)) {
-          case null { #err(varNotFound(env,x)) };
+          case null { #err(#varNotFound(env,x)) };
           case (?v) { #ok(v) };
         }
       };
@@ -205,17 +209,17 @@ module {
              case (#ok(#refNode(refId))) {
                     switch (A.get(actx, refId)) {
                     case (#ok(res)) { res };
-                    case (#err(getErr)) { #err(getError(getErr)) };
+                    case (#err(getErr)) { #err(#getError(getErr)) };
                     }
                   };
              case (#ok(#thunkNode(thunkId))) {
                     switch (A.get(actx, thunkId)) {
                     case (#ok(res)) { res };
-                    case (#err(getErr)) { #err(getError(getErr)) };
+                    case (#err(getErr)) { #err(#getError(getErr)) };
                     }
                   };
              case (#ok(v)) {
-                    #err(valueMismatch(v, #refNode))
+                    #err(#valueMismatch(v, #refNode))
                   };
              }
            };
@@ -246,7 +250,7 @@ module {
                       if b { evalExp(actx, env, e2) }
                       else { evalExp(actx, env, e3) }
                     };
-               case (#ok(v)) { #err(valueMismatch(v, #bool)) };
+               case (#ok(v)) { #err(#valueMismatch(v, #bool)) };
              }
            };
       case (#thunk(e)){ #ok(#thunk(env, e)) };
@@ -254,7 +258,7 @@ module {
              switch (evalExp(actx, env, e)) {
              case (#err(e)) { #err(e) };
              case (#ok(#thunk(env2, e2))) { evalExp(actx, env2, e2) };
-             case (#ok(v)) { #err(valueMismatch(v, #thunk)) };
+             case (#ok(v)) { #err(#valueMismatch(v, #thunk)) };
              }
            };
       case (#unit)    { #ok(#unit) };
@@ -275,11 +279,11 @@ module {
                            switch v1 {
                            case (#name(n)) {
                                   switch (A.put(actx, n, v2)) {
-                                  case (#err(pe)) { #err(putError(pe)) };
+                                  case (#err(pe)) { #err(#putError(pe)) };
                                   case (#ok(refId)) { #ok(#refNode(refId)) };
                                   }
                                 };
-                           case v { #err(valueMismatch(v, #name)) };
+                           case v { #err(#valueMismatch(v, #name)) };
                            };
                          };
                     }
@@ -293,11 +297,11 @@ module {
                     switch v1 {
                       case (#name(n)) {
                              switch (A.putThunk(actx, n, closure(env, e2))) {
-                             case (#err(pe)) { #err(putError(pe)) };
+                             case (#err(pe)) { #err(#putError(pe)) };
                              case (#ok(thunkId)) { #ok(#thunkNode(thunkId)) };
                              }
                            };
-                      case v { #err(valueMismatch(v, #name)) };
+                      case v { #err(#valueMismatch(v, #name)) };
                     }
                   };
              }
@@ -350,48 +354,6 @@ module {
     assert false; null
   };
 
-  public func getError(ge:T.Adapton.GetError) : Error {
-    { origin=?("eval.Adapton", null);
-      message=("get error: " # "to do");
-      data=#getError(ge)
-    }
-  };
-
-  public func putError(pe:T.Adapton.PutError) : Error {
-    { origin=?("eval.Adapton", null);
-      message=("put error: " # "to do");
-      data=#putError(pe)
-    }
-  };
-
-  public func varNotFound(env:Env, varocc:Name) : Error {
-    { origin=?("eval", null);
-      message=("Variable not found: " # "to do");
-      data=#varNotFound(env, varocc)
-    }
-  };
-
-  public func missingFeature(feat:Text) : Error {
-    { origin=?("eval", null);
-      message=("Missing feature: " # feat);
-      data=#missingFeature(feat)
-    }
-  };
-
-  public func valueMismatch(v:Val, t:ValTag) : Error {
-    { origin=?("eval", null);
-      message=("Dynamic type error: ...");
-      data=#valueMismatch(v, t)
-    }
-  };
-
-  public func columnMiscount(expectedCount:Nat, offendingRow:Nat, rowCount:Nat) : Error {
-    { origin=?("eval", null);
-      message=("Sheet construction: Column count mismatch: ...");
-      data=#columnMiscount(expectedCount, offendingRow, rowCount)
-    }
-  };
-
   public func closure(_env:Env, _exp:Exp) : T.Closure.Closure {
     {
       env=_env;
@@ -404,7 +366,7 @@ module {
     switch (v1, v2) {
       case (#nat(n1), #nat(n2)) { #ok(#bool(n1 == n2)) };
       case (_, _) {
-             #err(missingFeature("boolean eq test; missing case."))
+             #err(#missingFeature("boolean eq test; missing case."))
            }
     }
   };
@@ -413,7 +375,7 @@ module {
     switch (v1, v2) {
       case (#nat(n1), #nat(n2)) { #ok(#nat(n1 / n2)) };
       case (_, _) {
-             #err(missingFeature("division; missing case."))
+             #err(#missingFeature("division; missing case."))
            }
     }
   };
@@ -422,7 +384,7 @@ module {
     switch (v1, v2) {
       case (#nat(n1), #nat(n2)) { #ok(#nat(n1 + n2)) };
       case (_, _) {
-             #err(missingFeature("addition; missing case."))
+             #err(#missingFeature("addition; missing case."))
            }
     }
   };
@@ -431,7 +393,7 @@ module {
     switch (v1, v2) {
       case (#nat(n1), #nat(n2)) { #ok(#nat(n1 - n2)) };
       case (_, _) {
-             #err(missingFeature("subtraction; missing case."))
+             #err(#missingFeature("subtraction; missing case."))
            }
     }
   };
@@ -440,7 +402,7 @@ module {
     switch (v1, v2) {
       case (#nat(n1), #nat(n2)) { #ok(#nat(n1 * n2)) };
       case (_, _) {
-             #err(missingFeature("multiplication; missing case."))
+             #err(#missingFeature("multiplication; missing case."))
            }
     }
   };
@@ -449,7 +411,7 @@ module {
     switch (v1, v2) {
       case (#text(n1), #text(n2)) { #ok(#text(n1 # n2)) };
       case (_, _) {
-             #err(missingFeature("concatenation; missing case."))
+             #err(#missingFeature("concatenation; missing case."))
            }
     }
   };

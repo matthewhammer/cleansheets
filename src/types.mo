@@ -13,7 +13,7 @@ public module Sheet {
   public type Sheet = {
     name: Eval.Name; // (name used for globally-unique Adapton resources)
     grid: [[SheetCell]];
-    errors: Buf.Buf<Eval.Error>;
+    errors: [Eval.Error];
   };
 
   // A sheet cell holds an expression to eval, and the eval result
@@ -58,12 +58,6 @@ public module Eval {
 
   public type Block =
     List<(Name, Exp)>;
-
-  public type Error = {
-    origin: List<Text>;
-    message: Text;
-    data: ErrorData;
-  };
 
   // to do --
   //  this matches standard library definition; copying to overcome cyclic def compiler error.
@@ -119,7 +113,8 @@ public module Eval {
 
   public type Env = List<(Name, Val)>;
 
-  public type ErrorData = {
+  public type Error = {
+    #uninitializedEvaluatorField;
     #cyclicDependency: (Adapton.Stack, Name);
     #varNotFound: (Env, Name);
     #missingFeature: Text;
@@ -183,7 +178,7 @@ public module Eval {
     }
   };
 
-  public func errorEq(err1:ErrorData, err2:ErrorData) : Bool {
+  public func errorEq(err1:Error, err2:Error) : Bool {
     // to do
     false
   };
@@ -191,7 +186,7 @@ public module Eval {
   public func resultEq(r1:Result, r2:Result) : Bool {
     switch (r1, r2) {
     case (#ok(v1), #ok(v2)) { valEq(v1, v2) };
-    case (#err(e1), #err(e2)) { errorEq(e1.data, e2.data) };
+    case (#err(e1), #err(e2)) { errorEq(e1, e2) };
     case (_, _) { false };
     }
   };
@@ -223,11 +218,6 @@ public module Closure {
   public type Closure = {
     env: Eval.Env;
     exp: Eval.Exp;
-    // ------------
-    // invariant: for all c:Closure.
-    //   c.eval == \ctx. Eval.evalExp(ctx, c.env, c.exp)
-    // (only the Eval module creates these closures)
-    eval: Adapton.Context -> Eval.Result;
   };
 
   public func closureEq(c1:Closure, c2:Closure) : Bool {
@@ -282,7 +272,7 @@ public module Adapton {
   // Logs are tree-structured.
   public type LogEvent = {
     #put:      (Name, Val, [LogEvent]);
-    #putThunk: (Name, Closure, [LogEvent]);
+    #putThunk: (Name, MissingClosure, [LogEvent]);
     #get:      (Name, Result, [LogEvent]);
     #dirtyIncomingTo:(Name, [LogEvent]);
     #dirtyEdgeFrom:(Name, [LogEvent]);
@@ -290,9 +280,10 @@ public module Adapton {
     #cleanThunk:(Name, Bool, [LogEvent]);
     #evalThunk:(Name, Result, [LogEvent]);
   };
+  public type MissingClosure = (); // to get the compiler to accept things
   public type LogEventTag = {
     #put:      (Name, Val);
-    #putThunk: (Name, Closure);
+    #putThunk: (Name, MissingClosure);
     #get:      (Name, Result);
     #dirtyIncomingTo:Name;
     #dirtyEdgeFrom: Name;
@@ -317,6 +308,8 @@ public module Adapton {
     var logFlag: Bool;
     var logBuf: LogEventBuf;
     var logStack: LogBufStack;
+    // initially gives errors; real `eval` is installed by `Eval` module:
+    var eval: (Context, Eval.Env, Eval.Exp) -> Eval.Result;
   };
 
   public func logEventsEq (e1:[LogEvent], e2:[LogEvent]) : Bool {

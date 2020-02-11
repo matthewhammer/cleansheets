@@ -2,26 +2,32 @@ import T "../src/types";
 import A "../src/adapton";
 import E "../src/eval";
 
+// the `E` part of a Cloud-backed `REPL` for the CleanSheets lang.
+
 actor {
   public type Env = T.Eval.Env;
   public type Name = T.Eval.Name;
   public type Exp = T.Eval.Exp;
+  public type Result = T.Eval.Result;
 
-  var env : T.Eval.Env = null;
-  var adaptonCtx : T.Adapton.Context = A.init();
+  var env : Env = null;
+  var adaptonCtx : T.Adapton.Context = A.init(true);
 
-  // the `E` part of a Cloud-backed `REPL` for the CleanSheets lang.
-  public func eval(n:?Name, exp:Exp) : async T.Eval.Result {
-    let res = E.evalExp(adaptonCtx, env, exp);
-    switch (res, n) {
-    case (#err(e), _) { return #err(e) };
-    case (#ok(v), null) { return #ok(v) };
-    case (#ok(v), ?n) {
-           env := ?((n, v), env);
-           #ok(v)
-         };
-    }
+  public func eval(n:?Name, e:Exp) : async Result {
+    let res = E.evalExp(adaptonCtx, env, e);
+    env := { switch (n, res) {
+             case (?n, #ok(val)) { ?((n, val), env) };
+             case (_, _) { env };
+             }};
+    res
   };
+
+  public func getLastLogEvent() : async ?T.Adapton.LogEvent {
+    A.getLogEventLast(adaptonCtx)
+  };
+
+
+
 }
 
 /* To do in the future:

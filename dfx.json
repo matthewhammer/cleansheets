@@ -1,15 +1,21 @@
 {
     "canisters": {
+        "cleanSheets": {
+            "main": "src/cleanSheets.mo",
+            "frontend": {
+                "entrypoint": "index.js"
+            }
+        },
         "cleanSheetsExcelTest": {
             "main": "test/simpleExcelEmulation.mo",
             "frontend": {
-        	"entrypoint": "web/index.js"
+        	"entrypoint": "index.js"
             }
-	},
+	      },
         "cleanSheetsAdaptonTest": {
             "main": "test/simpleAdaptonDivByZero.mo",
             "frontend": {
-                "entrypoint": "web/index.js"
+                "entrypoint": "index.js"
             }
         }
     },
@@ -19,8 +25,7 @@
         },
         "start": {
             "address": "127.0.0.1",
-            "port": 8080
+            "port": 8000
         }
-    },
-    "version": 1
+    }
 }
