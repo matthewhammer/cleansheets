@@ -129,7 +129,11 @@ public func getLogEvents(c:Context) : [LogEvent] {
 };
 
 public func getLogEventLast(c:Context) : ?LogEvent {
-  c.logBuf.getOpt(c.logBuf.len() - 1)
+  if (c.logBuf.len() > 0) {
+    ?c.logBuf.get(c.logBuf.len())
+  } else {
+    null
+  }
 };
 
 // assert last log event
