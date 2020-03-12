@@ -75,9 +75,9 @@ import T "types";
 
 module {
 public type Val = T.Eval.Val;
+public type Env = T.Eval.Env;
 public type Exp = T.Eval.Exp;
 public type Error = T.Eval.Error;
-public type ErrorData = T.Eval.ErrorData;
 public type NodeId = T.Eval.NodeId;
 public type Name = T.Eval.Name;
 public type Closure = T.Closure.Closure;
@@ -111,6 +111,11 @@ public func init(_logFlag:Bool) : Context {
     var logBuf : LogEventBuf = Buf.Buf<T.Adapton.LogEvent>(03);
     var logStack : LogBufStack = null;
     var logFlag = _logFlag;
+    var eval = func (c:Context, env:Env, exp:Exp) : Result {
+      // hack: this field should be initialized by the Eval module,
+      // which depends on this (Adapton) module.
+      #err(#uninitializedEvaluatorField)
+    };
   }
 };
 
@@ -120,6 +125,14 @@ public func getLogEvents(c:Context) : [LogEvent] {
   switch (c.agent) {
     case (#editor) { c.logBuf.toArray() };
     case (#archivist) { assert false ; loop { } };
+  }
+};
+
+public func getLogEventLast(c:Context) : ?LogEvent {
+  if (c.logBuf.len() > 0) {
+    ?c.logBuf.get(c.logBuf.len())
+  } else {
+    null
   }
 };
 
@@ -180,7 +193,7 @@ public func putThunk(c:Context, n:Name, cl:Closure)
   case (?#ref(oldRef)) { dirtyRef(c, n, oldRef) };
   };
   addEdge(c, {name=n}, #putThunk(cl));
-  endLogEvent(c, #putThunk(n, cl));
+  endLogEvent(c, #putThunk(n, ignore cl));
   #ok({ name=n })
 };
 
@@ -430,14 +443,6 @@ func cleanThunk(c:Context, n:Name, t:Thunk) : Bool {
   true
 };
 
-public func cyclicDependency(s:Stack, n:Name) : Error {
-  let ed = (#cyclicDependency(s, n) : ErrorData);
-  { origin=?("adapton", null);
-    message=("cyclic dependency in DCG: ...");
-    data=ed;
-  }
-};
-
 func stackContainsNodeName(s:Stack, nodeName:Name) : Bool {
   L.exists<Name>(s, func (n:Name) : Bool { T.Eval.nameEq(n, nodeName) })
 };
@@ -449,13 +454,15 @@ func evalThunk(c:Context, nodeName:Name, thunkNode:Thunk) : Result {
   let oldAgent = c.agent;
   // if nodeName exists on oldStack, then we have detected a cycle.
   if (stackContainsNodeName(oldStack, nodeName)) {
-    return #err(cyclicDependency(oldStack, nodeName))
+    return #err(#cyclicDependency(oldStack, nodeName))
   };
   c.agent := #archivist;
   c.edges := Buf.Buf<Edge>(03);
   c.stack := ?(nodeName, oldStack);
   remBackEdges(c, thunkNode.outgoing);
-  let res = thunkNode.closure.eval(c);
+  let res = c.eval(c,
+                   thunkNode.closure.env,
+                   thunkNode.closure.exp);
   let edges = c.edges.toArray();
   c.agent := oldAgent;
   c.edges := oldEdges;

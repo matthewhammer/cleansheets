@@ -1,8 +1,11 @@
 {
     "canisters": {
+        "cleanSheets": {
+            "main": "src/cleanSheets.mo"
+        },
         "cleanSheetsExcelTest": {
             "main": "test/simpleExcelEmulation.mo"
-        },
+	},
         "cleanSheetsAdaptonTest": {
             "main": "test/simpleAdaptonDivByZero.mo"
         }
@@ -13,8 +16,7 @@
         },
         "start": {
             "address": "127.0.0.1",
-            "port": 8080
+            "port": 8000
         }
-    },
-    "version": 1
+    }
 }
